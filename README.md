@@ -42,7 +42,7 @@ It provides reference guides, best practices, and setup instructions to onboard 
 | Repo                                                   | Purpose                   | Key Features                                                                                                     |
 | ------------------------------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | [graph-api](https://github.com/aaron-wilson/graph-api) | Yoga-based GraphQL server | Type-safe schema, DynamoDB, Cognito, OpenTelemetry + New Relic, Vitest + Supertest                               |
-| [rest-api](https://github.com/aaron-wilson/rest-api)   | Bun + Hono backend        | Fully typed REST routes, OpenAPI, DynamoDB, Cognito, Vitest + Supertest + Playwright                             |
+| [rest-api](https://github.com/aaron-wilson/rest-api)   | Bun + Hono backend        | Fully typed REST routes, OpenAPI, DynamoDB, Cognito, Vitest + Supertest                                          |
 | [react-ui](https://github.com/aaron-wilson/react-ui)   | Frontend application      | Next.js + React, urql GraphQL client, Tailwind CSS, MDX docs, Vitest (unit/component) + Playwright (E2E), Sentry |
 
 ---
@@ -56,7 +56,7 @@ It provides reference guides, best practices, and setup instructions to onboard 
 | **Database**            | AWS DynamoDB              | AWS DynamoDB                                    |                                            |
 | **Auth**                | AWS Cognito               | AWS Cognito                                     | GraphQL client integration (urql)          |
 | **Validation**          | Zod                       | Zod                                             |                                            |
-| **Testing**             | Vitest + Supertest        | Vitest + Supertest + Playwright                 | Vitest (unit/component) + Playwright (E2E) |
+| **Testing**             | Vitest + Supertest        | Vitest + Supertest                              | Vitest (unit/component) + Playwright (E2E) |
 | **CI/CD**               | GitHub Actions + AWS CDK  | GitHub Actions + AWS CDK + Docker + ECS Fargate | GitHub Actions + AWS CDK + S3 + CloudFront |
 | **Observability**       | OpenTelemetry → New Relic | OpenTelemetry → New Relic                       | Sentry (frontend errors & performance)     |
 | **Styling**             |                           |                                                 | Tailwind CSS                               |

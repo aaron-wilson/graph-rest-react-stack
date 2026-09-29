@@ -1,0 +1,9 @@
+# Recoverable itinerary streaming
+
+A generation starts with `startCreateGeneration` or `startRefineGeneration` on GraphQL. The mutation returns an ID immediately. The browser then makes an authenticated `GET /generations/{id}/events` request to GraphQL with `Accept: text/event-stream` and the same bearer header. The provider's text arrives as ordered `chunk` events. The server saves a validated plan through REST only after the provider stream completes; a `completed` event contains the saved trip ID. `failed` and `cancelled` are terminal and save no plan.
+
+Each event carries the generation ID and a monotonic sequence. A late subscriber receives a snapshot of the current state, then later events. A reconnect can send `Last-Event-ID` (or `after`) to replay retained events; if the requested sequence is outside the retained window, it receives a fresh snapshot. The browser deduplicates by generation ID and sequence, and loads the trip by ID after completion. Every subscription and cancellation authenticates the caller and checks ownership. The bearer token stays in an HTTP header, not a URL.
+
+The ledger is process-local. It retains at most 100 events per job for five minutes and at most 100 jobs. Completed jobs expire after five minutes; closing a subscriber removes its listener. A new generation for the same owner and target cancels the old one. On a process restart, an authenticated request for its own unknown generation ID receives an `interrupted` snapshot, so the UI can offer a fresh start without suggesting that the old job completed. This contract assumes one GraphQL task; multi-instance replay needs a shared ledger before scaling out.
+
+Verify with the GraphQL unit suite and `test:integration` against the local REST app. The HTTP/SSE integration exercises ordered chunks, owner rejection, replay, and final REST persistence using deterministic providers. No vendor account is needed.

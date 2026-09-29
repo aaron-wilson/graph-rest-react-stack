@@ -2,6 +2,7 @@
 
 > **Implementation status:** This document describes the target architecture and illustrative
 > patterns, not completed features. The current stack is an early API prototype with no UI app.
+> REST now has a memory trip store and minimal demo routes; GraphQL has a deterministic prototype.
 > The showcase will use a static Next.js UI, REST-owned persistence, and optional cloud providers;
 > live credentials and deployments are not prerequisites for the local demo.
 

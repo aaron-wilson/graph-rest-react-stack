@@ -9,9 +9,9 @@ The REST service owns trips. GraphQL will access them through REST; it will not 
 | Read or delete a trip | Owner ID and trip ID | One private document |
 | List trips | Owner ID, ascending trip ID, opaque cursor | Up to 100 documents |
 | Batch read | Owner ID and trip IDs | Existing documents in input order |
-| Public share | Owner ID, trip ID, unpredictable token | City, days, and update time only |
+| Public share | Owner ID, trip ID, unpredictable token | Trip ID, city, days, and update time only |
 
-The store requires an expected version on writes and deletes. A create expects no existing record and starts at version 1. Each edit increments the version; a stale expected version returns a conflict. Cursor pagination encodes the last trip ID, so adding later IDs does not repeat earlier results. A cursor is scoped by the caller's owner ID during listing. The memory adapter copies values on reads and writes to keep callers from mutating stored data accidentally.
+The store requires an expected version on writes and deletes. A create expects no existing record and starts at version 1. Each edit increments the version; a stale expected version returns a conflict. Cursor pagination uses ascending, locale-independent code-unit order on trip IDs and encodes the last ID. A cursor is scoped by the caller's owner ID during listing. Paging is not a snapshot: an insert before the last returned ID will not appear later in that traversal. The memory adapter copies values on reads and writes to keep callers from mutating stored data accidentally.
 
 `POST /trips`, `GET /trips/:id`, and `GET /trips` currently use the fixed `demo` owner until authentication arrives. Run `bun run seed` to start a local REST server with three deterministic city trips, or call the store's `reset(demoTrips())` in a test. That command resets only its own process; it does not populate another running server. Restarting any memory-backed server clears its data. No share URL is exposed yet; the domain service has a public projection that omits owner and preferences.
 

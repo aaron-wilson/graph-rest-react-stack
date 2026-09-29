@@ -1,5 +1,10 @@
 # The provider pattern
 
+> **Implementation status:** This document describes the target architecture and illustrative
+> patterns, not completed features. The current stack is an early API prototype with no UI app.
+> The showcase will use a static Next.js UI, REST-owned persistence, and optional cloud providers;
+> live credentials and deployments are not prerequisites for the local demo.
+
 This is the load-bearing pattern of the whole stack: every external dependency — an LLM, a weather
 API, persistence, identity, telemetry, browser error reporting — is reached through a hand-written
 interface, implemented by one small file per vendor, and selected by a single environment variable.

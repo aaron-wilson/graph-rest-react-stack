@@ -1,5 +1,10 @@
 # Architecture
 
+> **Implementation status:** This document describes the target architecture and illustrative
+> patterns, not completed features. The current stack is an early API prototype with no UI app.
+> The showcase will use a static Next.js UI, REST-owned persistence, and optional cloud providers;
+> live credentials and deployments are not prerequisites for the local demo.
+
 This is the orientation document for the whole stack: what the product does, which of the four
 repositories owns which responsibility, and — the part worth reading even if you never touch this
 codebase — why a REST domain service *and* a GraphQL aggregator in front of it is a deliberate

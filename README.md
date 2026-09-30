@@ -1,6 +1,6 @@
 # Wander reference stack
 
-Wander is a trip planner with three independently runnable application layers: a static Next.js UI, a GraphQL Yoga planner, and a Bun/Hono domain API. This repository owns the teaching references, local Compose topology, foundation CDK app and deployment orchestration. Keep all four repositories in sibling directories.
+**Wander**, a trip planner, has three independently runnable application layers: a static Next.js UI, a GraphQL Yoga planner, and a Bun/Hono domain API. This repository owns the teaching references, local Compose topology, foundation CDK app and deployment orchestration. Keep all four repositories in sibling directories.
 
 | Repository               | Responsibility                                                                                            |
 | ------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -15,12 +15,14 @@ After dependencies and images are available, the default demo uses only local se
 
 Use the pinned lockfiles: Bun 1.2.21 for REST, pnpm 10.15.0 for graph/platform and pnpm 11.18.0 for UI. Containers and inactive workflows select Node 24; local verification records its actual runtime. Dependency setup is an explicit prerequisite, never part of a check.
 
+Choose one local mode: **source development** (`bun run dev` for REST and `pnpm dev` for graph/UI, in three terminals) or **container demo** (Compose starts all three). They are alternatives and bind the same ports; stop one before starting the other. Source mode reloads edits; Compose serves a built static UI and requires rebuilding after changes. Each application README has its source command.
+
 From this directory, with Docker available:
 
 ```sh
 docker compose --env-file /dev/null up --build -d --wait
 node scripts/smoke.mjs
-docker compose --env-file /dev/null down -v
+docker compose --env-file /dev/null down
 ```
 
 The UI listens on `http://localhost:3001`, GraphQL on `http://localhost:4000/graphql`, and REST/Swagger on `http://localhost:3000/docs`. For installed host dependencies, each service README supplies a local command. No AWS account or vendor key is needed for the demo.
@@ -36,6 +38,8 @@ node scripts/check-env.mjs
 node scripts/check-workflows.mjs
 bash scripts/docker-acceptance.sh
 ```
+
+Stop any manually started stack before browser or Docker acceptance. Docker acceptance deletes the local demo volume; use it only with disposable local data.
 
 These entrypoints use installed binaries, real tests and fake-input offline synth. Docker acceptance starts clean volumes, tests memory and DynamoDB profiles, inspects volume persistence and cleans up. It fails when Docker is unavailable. The UI command runs the installed Chrome journey; Firefox/WebKit need their existing Playwright browsers. Cloud deployments, real providers, hosted sign-in and vendor exports remain live-unverified. Workflow templates are deliberately inactive under `.github/workflow-templates/*.yml.disabled`; no automatic CI, deployment or scheduled activity is enabled. Deployment orchestration defaults to dry-run and requires explicit `--execute`.
 

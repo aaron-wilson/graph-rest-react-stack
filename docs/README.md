@@ -2,6 +2,8 @@
 
 Wander's full local journey creates a trip, streams an itinerary, refines it, pins/swaps activities, saves it and opens a public read-only share. Defaults need only installed dependencies and local services. This index maps each retained technology to its actual responsibility and verification; installed packages alone are not evidence. Cloud/vendor activation is separate from implementation.
 
+For execution, start with the [hub local-mode instructions](../README.md): source development and full-stack Compose are alternatives. The same planning walkthrough works with either. For an AWS dev environment, use the deployment runbook below; its APIs require Cognito even with mock providers.
+
 ## Reading map
 
 | Reference                                                                            | What it teaches                                                                                         |

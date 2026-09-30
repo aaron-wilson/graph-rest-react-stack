@@ -67,6 +67,7 @@ describe("foundation deployment contract", () => {
       BucketEncryption: Match.anyValue(),
     });
     template.hasResource("AWS::S3::Bucket", { DeletionPolicy: "Retain" });
+    template.resourceCountIs("AWS::S3::BucketPolicy", 0);
     template.hasResourceProperties("AWS::Logs::LogGroup", {
       RetentionInDays: 14,
       KmsKeyId: Match.anyValue(),

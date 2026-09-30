@@ -126,7 +126,6 @@ export class FoundationStack extends cdk.Stack {
     const uiBucket = new s3.Bucket(this, "UiBucket", {
       bucketName: `wander-${config.account}-${config.region}-${config.environment}-ui`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      enforceSSL: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });

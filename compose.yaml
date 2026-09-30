@@ -46,6 +46,8 @@ services:
       args:
         NEXT_PUBLIC_GRAPHQL_URL: http://localhost:4000/graphql
         UI_SITE_ORIGIN: http://localhost:3001
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_SENTRY_RELEASE: ${NEXT_PUBLIC_SENTRY_RELEASE:-}
     ports:
       - "127.0.0.1:3001:3001"
     depends_on:

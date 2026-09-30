@@ -1,0 +1,12 @@
+{
+  "name": "Wander service health",
+  "description": "Starter NRQL dashboard; replace ACCOUNT_ID when importing manually.",
+  "pages": [{
+    "name": "API and providers",
+    "widgets": [
+      { "title": "Operation latency", "nrql": "SELECT percentile(wander.operation.duration, 50, 95, 99) FROM Metric TIMESERIES" },
+      { "title": "Error logs", "nrql": "SELECT count(*) FROM Log WHERE severityText = 'ERROR' FACET service.name TIMESERIES" },
+      { "title": "Provider duration", "nrql": "SELECT average(wander.operation.duration) FROM Metric WHERE operation LIKE 'provider.%' FACET operation TIMESERIES" }
+    ]
+  }]
+}

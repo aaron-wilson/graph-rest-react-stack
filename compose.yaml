@@ -10,6 +10,8 @@ services:
       DYNAMO_ENDPOINT: ${DYNAMO_ENDPOINT:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       CORS_ORIGIN: http://localhost:3001
+      TELEMETRY_MODE: ${TELEMETRY_MODE:-off}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -27,6 +29,8 @@ services:
       PROVIDER_PLACES: mock
       PROVIDER_EVENTS: mock
       PROVIDER_LLM: mock
+      TELEMETRY_MODE: ${TELEMETRY_MODE:-off}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:4000:4000"
     depends_on:
@@ -73,5 +77,29 @@ services:
     depends_on:
       dynamodb:
         condition: service_started
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    profiles: ["telemetry"]
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./telemetry/collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "127.0.0.1:4318:4318"
+    depends_on:
+      - jaeger
+  jaeger:
+    image: jaegertracing/jaeger:2.21.0
+    profiles: ["telemetry"]
+    ports:
+      - "127.0.0.1:16686:16686"
+  collector-newrelic:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    profiles: ["newrelic"]
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./telemetry/collector-newrelic.yaml:/etc/otel/config.yaml:ro
+    environment:
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
+      NEW_RELIC_OTLP_ENDPOINT: ${NEW_RELIC_OTLP_ENDPOINT:-https://otlp.nr-data.net:4318}
 volumes:
   dynamodb-data:

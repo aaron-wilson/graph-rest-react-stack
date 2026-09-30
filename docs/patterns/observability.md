@@ -1,0 +1,9 @@
+# API telemetry
+
+Both APIs start OpenTelemetry before importing application code. `TELEMETRY_MODE=off` is the default and creates no exporter or outbound call. `TELEMETRY_MODE=otlp` requires `OTEL_EXPORTER_OTLP_ENDPOINT`, an OTLP HTTP collector origin. The APIs export traces, duration metrics, and structured event logs. GraphQL passes W3C `traceparent` to REST. The browser creates a fresh trace context for GraphQL HTTP and SSE requests without embedding identity or itinerary text. Provider spans carry only capability names; log fields are allowlisted and trace correlated. Export batches and queues are bounded.
+
+For local inspection, run `TELEMETRY_MODE=otlp OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318 docker compose --profile telemetry up --build -d` from the hub. Use the app, then open Jaeger at `http://localhost:16686` to find `wander-graph` and `wander-rest` traces. `docker compose logs collector` shows basic metric and log export counts. The collector applies a memory limiter and bounded batches. This path needs Docker, but no account.
+
+New Relic forwarding is optional. With a New Relic account, supply `NEW_RELIC_LICENSE_KEY` to the collector process and set `NEW_RELIC_OTLP_ENDPOINT` if outside the US region; point APIs at `http://collector-newrelic:4318` with `TELEMETRY_MODE=otlp`, then start the `newrelic` profile. The collector adds the required `api-key` header. The key stays out of application containers and business code. Import the three NRQL widgets in `telemetry/newrelic-dashboard.json` manually into a dashboard and bind the account there. No New Relic account, dashboard, alert, or billing behavior has been live verified.
+
+The local viewer is for traces. Metrics and logs are visible through collector debug output; this is a demonstration path, not a retained production store. A production collector should send them to a configured backend and apply retention and access controls there.

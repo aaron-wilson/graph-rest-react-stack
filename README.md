@@ -1,48 +1,96 @@
-# Wander reference stack
+# wander
 
-**Wander**, a trip planner, has three independently runnable application layers: a static Next.js UI, a GraphQL Yoga planner, and a Bun/Hono domain API. This repository owns the teaching references, local Compose topology, foundation CDK app and deployment orchestration. Keep all four repositories in sibling directories.
+> AI Trip Planner: GraphQL Yoga, Bun/Hono REST, and a static React/Next.js UI.
 
-| Repository               | Responsibility                                                                                            |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `react-ui`               | React interaction, typed urql operations, authenticated streaming, static MDX and local responsive images |
-| `graph-api`              | GraphQL views, request-local DataLoader batching, planning providers and generation lifecycle             |
-| `rest-api`               | Validated trip rules, ownership, versioned edits, memory/DynamoDB persistence and OpenAPI                 |
-| `graph-rest-react-stack` | References, Compose, platform infrastructure, verification and release orchestration                      |
+---
 
-After dependencies and images are available, the default demo uses only local services: deterministic planning adapters, memory persistence, `Bearer demo` identity and disabled telemetry/browser reporting. Memory resets on REST restart. Optional DynamoDB Local provides durability. Live mode verifies Cognito tokens in both APIs and requires a public PKCE browser client.
+## Table of Contents
 
-## Run locally
+- [Overview](#overview)
+- [Scope](#scope)
+- [Repositories](#repositories)
+- [Tech Stack Overview](#tech-stack-overview)
+- [Getting Started](#getting-started)
+- [Testing & Deployment](#testing--deployment)
 
-Use the pinned lockfiles: Bun 1.2.21 for REST, pnpm 10.15.0 for graph/platform and pnpm 11.18.0 for UI. Containers and inactive workflows select Node 24; local verification records its actual runtime. Dependency setup is an explicit prerequisite, never part of a check.
+---
 
-Choose one local mode: **source development** (`bun run dev` for REST and `pnpm dev` for graph/UI, in three terminals) or **container demo** (Compose starts all three). They are alternatives and bind the same ports; stop one before starting the other. Source mode reloads edits; Compose serves a built static UI and requires rebuilding after changes. Each application README has its source command.
+## Overview
 
-From this directory, with Docker available:
+A typed, tested three-tier application, called **Wander**, a trip planner. Wander's full local journey creates a trip, streams an itinerary, refines it, pins/swaps activities, saves it, and opens a public read-only share.
+
+This hub contains the [architecture](docs/architecture.md), Docker Compose setup, shared AWS CDK foundation, and deployment tooling. The focus is how the technologies work together.
+
+---
+
+## Scope
+
+- Typed API boundaries, runtime validation, and interchangeable planning/storage providers
+- Unit, integration, browser, and infrastructure tests
+- Containers, AWS infrastructure, and disabled CI/CD templates
+- Optional API telemetry, browser monitoring, MDX, and build-time images
+
+---
+
+## Repositories
+
+| Repository                                             | Responsibility         | Key features                                           |
+| ------------------------------------------------------ | ---------------------- | ------------------------------------------------------ |
+| [graph-api](https://github.com/aaron-wilson/graph-api) | GraphQL orchestration  | Yoga, DataLoader, provider adapters, authenticated SSE |
+| [rest-api](https://github.com/aaron-wilson/rest-api)   | Domain and persistence | Hono, Zod, OpenAPI, memory/DynamoDB stores             |
+| [react-ui](https://github.com/aaron-wilson/react-ui)   | Static frontend        | Next.js, React, urql, Tailwind, MDX, Sharp             |
+
+---
+
+## Tech Stack Overview
+
+Versions reflect the committed dependency set; Node 24 is the container/workflow baseline.
+
+| Layer               | GraphQL API                           | REST API                            | React UI                          |
+| ------------------- | ------------------------------------- | ----------------------------------- | --------------------------------- |
+| Language            | TypeScript 5.9.2                      | TypeScript 5.9.2                    | TypeScript 5.9.2                  |
+| Runtime / framework | Node 24 · Yoga 5.15.1 · GraphQL 16.11 | Bun 1.2.21 · Hono 4.9.6             | Next 16.3.7 · React 19.3          |
+| Package manager     | pnpm 10.15.0                          | Bun                                 | pnpm 11.18.0                      |
+| Data / validation   | REST client · DataLoader · Zod 3      | DynamoDB DocumentClient · Zod 3     | urql 5.0.4 · Zod 4                |
+| Authentication      | Cognito JWT                           | Cognito JWT                         | Cognito authorization code + PKCE |
+| Testing             | Vitest 5 · Supertest                  | Vitest 5 · Supertest                | Vitest 5 · Playwright 1.63 · axe  |
+| Deployment          | Docker · ECS Fargate · ALB            | Docker · ECS Fargate · internal ALB | Private S3 · CloudFront OAC       |
+| Observability       | OpenTelemetry → optional New Relic    | OpenTelemetry → optional New Relic  | Optional Sentry 11.1              |
+| Presentation        | —                                     | Swagger UI                          | Tailwind 4.3 · MDX 3 · Sharp 0.34 |
+
+Shared infrastructure uses AWS CDK 2.271.0 (library), IAM, SSM and Secrets Manager. GitHub Actions definitions are disabled templates. Vite transforms UI tests; Next builds the application. Lambda, Step Functions, SSR and Server Actions are outside this implementation.
+
+---
+
+## Getting Started
+
+Clone all four repositories as siblings. Choose one local mode:
+
+- **Source development:** install dependencies and follow each application's README; REST uses `bun run dev`, graph/UI use `pnpm dev`.
+- **Container demo:** from this hub, with Docker and host Node available:
 
 ```sh
 docker compose --env-file /dev/null up --build -d --wait
 node scripts/smoke.mjs
+# Stop when finished:
 docker compose --env-file /dev/null down
 ```
 
-The UI listens on `http://localhost:3001`, GraphQL on `http://localhost:4000/graphql`, and REST/Swagger on `http://localhost:3000/docs`. For installed host dependencies, each service README supplies a local command. No AWS account or vendor key is needed for the demo.
+Open http://localhost:3001/. Both modes use ports 3000/4000/3001, so run one at a time. Defaults use mock providers, demo identity, memory storage and disabled reporting; no vendor account is required. Docker profiles add DynamoDB Local and telemetry.
 
-## Verification and releases
+---
+
+## Testing & Deployment
+
+With all application dependencies and `platform-cdk/` dependencies installed:
 
 ```sh
 node scripts/verify-repo.mjs hub
 node scripts/verify-repo.mjs rest-api
 node scripts/verify-repo.mjs graph-api
 node scripts/verify-repo.mjs react-ui --e2e
-node scripts/check-env.mjs
-node scripts/check-workflows.mjs
-bash scripts/docker-acceptance.sh
 ```
 
-Stop any manually started stack before browser or Docker acceptance. Docker acceptance deletes the local demo volume; use it only with disposable local data.
+Local API/browser tests and offline infrastructure checks pass. Docker and live account verification remain pending. `scripts/docker-acceptance.sh` is the separate destructive-volume acceptance run.
 
-These entrypoints use installed binaries, real tests and fake-input offline synth. Docker acceptance starts clean volumes, tests memory and DynamoDB profiles, inspects volume persistence and cleans up. It fails when Docker is unavailable. The UI command runs the installed Chrome journey; Firefox/WebKit need their existing Playwright browsers. Cloud deployments, real providers, hosted sign-in and vendor exports remain live-unverified. Workflow templates are deliberately inactive under `.github/workflow-templates/*.yml.disabled`; no automatic CI, deployment or scheduled activity is enabled. Deployment orchestration defaults to dry-run and requires explicit `--execute`.
-
-## Learning index
-
-[docs/README.md](docs/README.md) indexes the architecture, patterns, implementation inventory and verification evidence. [docs/verification.md](docs/verification.md) records local results and prerequisite gaps. The UI ships selected committed teaching snapshots and requires no documentation server at runtime.
+`scripts/deploy-all.sh <environment> --dry-run` plans foundation → REST → graph → static UI from the inputs in [deployment.env.example](scripts/deployment.env.example); `--execute` deploys. The service stacks share `platform-cdk/node_modules`. Hosted APIs require Cognito and hosted REST uses DynamoDB. Workflow templates remain inactive until deliberately enabled.

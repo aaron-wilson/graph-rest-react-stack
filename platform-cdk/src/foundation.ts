@@ -131,8 +131,29 @@ export class FoundationStack extends cdk.Stack {
       enableKeyRotation: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
+    const logGroupName = `/wander/${config.environment}/api`;
+    logKey.addToResourcePolicy(
+      new iam.PolicyStatement({
+        principals: [
+          new iam.ServicePrincipal(`logs.${config.region}.amazonaws.com`),
+        ],
+        actions: [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*",
+        ],
+        resources: ["*"],
+        conditions: {
+          ArnEquals: {
+            "kms:EncryptionContext:aws:logs:arn": `arn:aws:logs:${config.region}:${config.account}:log-group:${logGroupName}`,
+          },
+        },
+      }),
+    );
     const logGroup = new logs.LogGroup(this, "ApiLogs", {
-      logGroupName: `/wander/${config.environment}/api`,
+      logGroupName,
       retention: logs.RetentionDays.TWO_WEEKS,
       encryptionKey: logKey,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

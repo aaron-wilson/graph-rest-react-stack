@@ -73,6 +73,45 @@ describe("foundation deployment contract", () => {
     });
   });
 
+  it("grants only regional Logs scoped use alongside account administration", () => {
+    const template = synth();
+    const keys = Object.values(template.findResources("AWS::KMS::Key"));
+    expect(keys).toHaveLength(1);
+    expect(keys[0].Properties.EnableKeyRotation).toBe(true);
+    expect(keys[0].DeletionPolicy).toBe("Retain");
+    const statements = keys[0].Properties.KeyPolicy.Statement;
+    expect(statements).toHaveLength(2);
+    expect(statements[0]).toMatchObject({
+      Action: "kms:*",
+      Principal: {
+        AWS: {
+          "Fn::Join": [
+            "",
+            ["arn:", { Ref: "AWS::Partition" }, ":iam::111111111111:root"],
+          ],
+        },
+      },
+    });
+    expect(statements[1]).toEqual({
+      Effect: "Allow",
+      Principal: { Service: "logs.us-east-1.amazonaws.com" },
+      Action: [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*",
+      ],
+      Resource: "*",
+      Condition: {
+        ArnEquals: {
+          "kms:EncryptionContext:aws:logs:arn":
+            "arn:aws:logs:us-east-1:111111111111:log-group:/wander/demo/api",
+        },
+      },
+    });
+  });
+
   it("separates private REST networking and execution/task/deploy roles", () => {
     const template = synth();
     template.resourceCountIs("AWS::EC2::NatGateway", 1);

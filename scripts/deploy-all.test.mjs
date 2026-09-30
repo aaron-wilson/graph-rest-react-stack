@@ -64,6 +64,28 @@ test("defaults to a safe ordered plan with pinned images and built public config
     /PRIVATE_DEPLOY_SENTINEL|:latest|GetSecretValue/,
   );
 });
+test("plans the shipped blank-model example without enabling a vendor", () => {
+  const example = Object.fromEntries(
+    readFileSync("scripts/deployment.env.example", "utf8")
+      .split("\n")
+      .filter((line) => /^[A-Z_]+=/.test(line))
+      .map((line) => {
+        const index = line.indexOf("=");
+        return [line.slice(0, index), line.slice(index + 1)];
+      }),
+  );
+  assert.equal(example.API_LLM_MODEL, "");
+  const result = run(["demo", "--dry-run"], example);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /WanderdemoGraph/);
+  assert.doesNotMatch(result.stdout, /describe-secret|PRIVATE_DEPLOY_SENTINEL/);
+  for (const provider of ["openai", "anthropic"]) {
+    const invalid = run(["demo"], { ...example, API_LLM_PROVIDER: provider });
+    assert.notEqual(invalid.status, 0);
+    assert.match(invalid.stderr, /API_LLM_MODEL/);
+    assert.equal(invalid.stdout, "");
+  }
+});
 test("validates required inputs and flags before any deployment", () => {
   for (const result of [
     run(["demo", "--yes"]),

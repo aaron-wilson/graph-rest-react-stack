@@ -1,0 +1,77 @@
+name: wander
+services:
+  rest:
+    build: ../rest-api
+    environment:
+      PORT: "3000"
+      APP_MODE: demo
+      PROVIDER_STORE: ${PROVIDER_STORE:-memory}
+      DYNAMO_TABLE: ${DYNAMO_TABLE:-}
+      DYNAMO_ENDPOINT: ${DYNAMO_ENDPOINT:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      CORS_ORIGIN: http://localhost:3001
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      retries: 12
+  graph:
+    build: ../graph-api
+    environment:
+      PORT: "4000"
+      APP_MODE: demo
+      REST_URL: http://rest:3000
+      CORS_ORIGIN: http://localhost:3001
+      PROVIDER_WEATHER: mock
+      PROVIDER_PLACES: mock
+      PROVIDER_EVENTS: mock
+      PROVIDER_LLM: mock
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      rest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      retries: 12
+  ui:
+    build:
+      context: ../react-ui
+      args:
+        NEXT_PUBLIC_GRAPHQL_URL: http://localhost:4000/graphql
+        UI_SITE_ORIGIN: http://localhost:3001
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      graph:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      retries: 12
+  dynamodb:
+    image: amazon/dynamodb-local:2.6.1
+    profiles: ["dynamo"]
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+    volumes:
+      - dynamodb-data:/data
+    ports:
+      - "127.0.0.1:8000:8000"
+  dynamodb-init:
+    build:
+      context: ../rest-api
+      target: build
+    profiles: ["dynamo"]
+    command: ["bun", "run", "scripts/init-dynamo.ts"]
+    environment:
+      PROVIDER_STORE: dynamo
+      DYNAMO_TABLE: ${DYNAMO_TABLE:-wander-local}
+      DYNAMO_ENDPOINT: http://dynamodb:8000
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    depends_on:
+      dynamodb:
+        condition: service_started
+volumes:
+  dynamodb-data:

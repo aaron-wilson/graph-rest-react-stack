@@ -81,6 +81,7 @@ try {
     run(root, "node", [
       "--test",
       "scripts/deploy-all.test.mjs",
+      "scripts/docker-acceptance.test.mjs",
       "scripts/check-newrelic-dashboard.test.mjs",
     ]);
   } else {

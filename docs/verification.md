@@ -35,3 +35,7 @@ Graph jobs/replay are process-local and lost on restart. REST memory data is als
 UI docs are committed MDX snapshots with source revision/hash checks; schema/codegen and local image variants pass drift checks. Exported routes, callback/share query paths and missing assets were tested through the real static server. Static hosting and archive/publication fixtures exist without claiming a live CDN.
 
 AWS/CDK deployment, real DynamoDB, Cognito, selected provider calls, collector/New Relic exports, Sentry uploads/reporting, alert delivery and OIDC trust must be verified separately by the owner before activation. These operations need accounts/credentials and were deliberately not exercised. The default workflows remain inert; there is no hosted CI evidence or automatic paid activity.
+
+## Review remediation checks
+
+The blank-model deployment regression now accepts the shipped mock example while rejecting blank real-provider models. Docker acceptance seeds through the build-stage tools service, waits for initialization before app startup, and compares actual trip records after restart. Local fixture tests cover command ordering, image-stage contents, failed persistence and cleanup; a loopback DynamoDB protocol test covers readiness before table creation. Remediation checks passed: REST 27 application tests (one DynamoDB contract skip) plus 2 infra tests; graph 4 infra tests; hub 5 foundation tests plus 9 script fixtures. Relevant format/lint/types/build and offline synth passed. These checks do not replace the still-pending Docker acceptance run.

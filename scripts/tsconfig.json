@@ -1,0 +1,9 @@
+{
+  "extends": "../platform-cdk/tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["../platform-cdk/node_modules/@types"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["deploy-plan.ts", "archive-static.ts"]
+}

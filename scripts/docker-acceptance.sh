@@ -4,7 +4,10 @@ deployment_root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$deployment_root"
 command -v docker >/dev/null || { echo "Docker is required for Compose acceptance" >&2; exit 2; }
 export PROVIDER_STORE=memory DYNAMO_TABLE= DYNAMO_ENDPOINT= TELEMETRY_MODE=off NEXT_PUBLIC_SENTRY_DSN=
-compose=(docker compose --env-file /dev/null)
+# Never delete the operator's persistent wander demo volume, even on failure.
+# Use the fixed project/file explicitly so inherited Compose settings cannot redirect cleanup.
+unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES
+compose=(docker compose --project-name wander-acceptance --file "$deployment_root/compose.yaml" --env-file /dev/null)
 persistence_snapshot="$(mktemp)"
 cleanup() {
   rm -f "$persistence_snapshot"

@@ -29,11 +29,19 @@ test("acceptance seeds with the build-stage service and verifies records after r
           ...process.env,
           PATH: `${directory}:${process.env.PATH}`,
           WANDER_TEST_FAIL: fail,
+          COMPOSE_PROJECT_NAME: "wander",
         },
       });
     const result = run();
     assert.equal(result.status, 0, result.stderr);
     const calls = readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
+    for (const args of calls.filter(([tool]) => tool === "docker")) {
+      assert.equal(
+        args[args.indexOf("--project-name") + 1],
+        "wander-acceptance",
+      );
+      assert.ok(args.includes("--file"));
+    }
     const seedIndex = calls.findIndex((args) =>
       args.includes("scripts/seed-once.ts"),
     );

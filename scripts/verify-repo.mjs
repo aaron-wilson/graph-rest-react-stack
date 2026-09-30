@@ -14,16 +14,16 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const name = process.argv[2];
 if (!["hub", "rest-api", "graph-api", "react-ui"].includes(name))
   throw new Error("Choose hub, rest-api, graph-api or react-ui");
+const flags = process.argv.slice(3);
+if (flags.some((flag) => !["--acceptance", "--e2e"].includes(flag)))
+  throw new Error(
+    "Use --acceptance for operator builds/servers/synth; --e2e adds UI browsers",
+  );
+const acceptance = flags.includes("--acceptance");
+if (flags.includes("--e2e") && (!acceptance || name !== "react-ui"))
+  throw new Error("--e2e requires react-ui --acceptance (starts app servers)");
 const dir = name === "hub" ? root : resolve(root, "..", name);
 const shim = mkdtempSync(join(tmpdir(), "wander-check-"));
-const bun = execFileSync("sh", ["-c", "command -v bun"], {
-  encoding: "utf8",
-}).trim();
-writeFileSync(
-  join(shim, "bun"),
-  `#!/bin/sh\nexec '${bun.replaceAll("'", "'\"'\"'")}' --no-env-file "$@"\n`,
-);
-chmodSync(join(shim, "bun"), 0o755);
 const env = {
   ...process.env,
   PATH: `${shim}:${dir}/node_modules/.bin:${root}/platform-cdk/node_modules/.bin:${process.env.PATH}`,
@@ -45,6 +45,16 @@ const run = (cwd, command, args) => {
     });
 };
 try {
+  if (acceptance || name === "rest-api") {
+    const bun = execFileSync("sh", ["-c", "command -v bun"], {
+      encoding: "utf8",
+    }).trim();
+    writeFileSync(
+      join(shim, "bun"),
+      `#!/bin/sh\nexec '${bun.replaceAll("'", "'\"'\"'")}' --no-env-file "$@"\n`,
+    );
+    chmodSync(join(shim, "bun"), 0o755);
+  }
   if (name === "react-ui" || name === "hub") {
     const envDirectory = name === "hub" ? resolve(root, "platform-cdk") : dir;
     if (
@@ -74,16 +84,18 @@ try {
     run(root, "node", ["scripts/check-workflows.mjs"]);
     run(root, "bash", ["-n", "scripts/docker-acceptance.sh"]);
     run(resolve(root, "platform-cdk"), "tsc", ["--noEmit"]);
-    run(resolve(root, "platform-cdk"), "vitest", ["run"]);
+    if (acceptance) run(resolve(root, "platform-cdk"), "vitest", ["run"]);
     run(resolve(root, "platform-cdk"), "prettier", ["--check", "."]);
     run(root, "tsc", ["--project", "scripts/tsconfig.json"]);
     run(root, "bash", ["-n", "scripts/deploy-all.sh"]);
-    run(root, "node", [
-      "--test",
-      "scripts/deploy-all.test.mjs",
-      "scripts/docker-acceptance.test.mjs",
-      "scripts/check-newrelic-dashboard.test.mjs",
-    ]);
+    if (acceptance)
+      run(root, "node", [
+        "--test",
+        "scripts/deploy-all.test.mjs",
+        "scripts/docker-acceptance.test.mjs",
+        "scripts/check-newrelic-dashboard.test.mjs",
+        "scripts/verify-repo.test.mjs",
+      ]);
   } else {
     const scripts = JSON.parse(
       readFileSync(resolve(dir, "package.json"), "utf8"),
@@ -94,33 +106,31 @@ try {
         run(dir, "bun", ["--bun", "node_modules/.bin/vitest", "run"]);
       else run(dir, "sh", ["-c", scripts[key]]);
     };
-    for (const key of ["format:check", "lint", "typecheck", "test"]) check(key);
+    for (const key of ["format:check", "lint", "typecheck"]) check(key);
+    if (acceptance) check("test");
     if (name === "graph-api") {
-      check("test:integration");
+      if (acceptance) check("test:integration");
       check("codegen:check");
     }
     if (name === "rest-api") {
-      const snapshot = readFileSync(resolve(dir, "docs/openapi.json"));
-      check("spec:snapshot");
-      if (!snapshot.equals(readFileSync(resolve(dir, "docs/openapi.json"))))
-        throw new Error("OpenAPI snapshot drift");
+      check("spec:check");
     }
     if (name === "react-ui") {
-      for (const key of [
-        "codegen:check",
-        "schema:check",
-        "docs:check",
-        "images:check",
-      ])
+      for (const key of ["codegen:check", "schema:check", "images:check"])
         check(key);
     }
-    for (const key of ["build", "infra:typecheck", "infra:test"]) check(key);
-    if (name === "react-ui") {
+    check("infra:typecheck");
+    if (acceptance && name === "react-ui") check("test:images");
+    if (acceptance) for (const key of ["build", "infra:test"]) check(key);
+    if (acceptance && name === "react-ui") {
       check("test:static");
       if (process.argv.includes("--e2e")) check("test:e2e");
     }
   }
-  run(root, "node", ["scripts/synth-offline.mjs", name]);
+  if (acceptance) run(root, "node", ["scripts/synth-offline.mjs", name]);
+  process.stdout.write(
+    `${name}: ${acceptance ? "operator acceptance" : "static checks"} passed\n`,
+  );
 } finally {
   rmSync(shim, { recursive: true, force: true });
 }

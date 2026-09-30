@@ -160,7 +160,7 @@ export class FoundationStack extends cdk.Stack {
     const deployRole = new iam.Role(this, "DeploymentRole", {
       assumedBy: new iam.ArnPrincipal(config.deployPrincipalArn),
     });
-    for (const name of ["openai", "anthropic", "ticketmaster", "newrelic"]) {
+    for (const name of ["openai", "anthropic", "ticketmaster"]) {
       secretsmanager.Secret.fromSecretNameV2(
         this,
         `ExistingSecret${name}`,

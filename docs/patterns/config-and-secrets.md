@@ -1,10 +1,11 @@
 # Configuration and secrets
 
 Configuration selects the outside services an application uses; secrets grant access to them.
-This reference explains the target configuration contract for the trip-planner stack, from a
+This reference explains the configuration contract for the trip-planner stack, from a
 credential-free local demo to optional AWS deployment. Use it when adding a provider or a new
-setting. The parser below is illustrative: service configuration modules and cloud wiring are
-not yet implemented, and the snippet has not been executed as a standalone test.
+setting. Runtime parsers, public/build boundaries and CDK deployment wiring are implemented and tested.
+The parser below is illustrative and has not been executed as a standalone test; cloud activation
+and live secret injection remain unverified.
 
 ## Parse once, pass typed values
 
@@ -17,12 +18,12 @@ Separate the pure parser from the startup call so tests can supply an ordinary o
 following small example shows conditional requirements without making the demo need a key:
 
 ```ts
-import { z } from 'zod';
+import { z } from "zod";
 
-const llmConfig = z.discriminatedUnion('PROVIDER_LLM', [
-  z.object({ PROVIDER_LLM: z.literal('mock') }),
+const llmConfig = z.discriminatedUnion("PROVIDER_LLM", [
+  z.object({ PROVIDER_LLM: z.literal("mock") }),
   z.object({
-    PROVIDER_LLM: z.literal('openai'),
+    PROVIDER_LLM: z.literal("openai"),
     OPENAI_API_KEY: z.string().trim().min(1),
     OPENAI_MODEL: z.string().trim().min(1),
   }),
@@ -32,12 +33,14 @@ const llmConfig = z.discriminatedUnion('PROVIDER_LLM', [
 export function parseLlmConfig(input: Record<string, string | undefined>) {
   const result = llmConfig.safeParse({
     ...input,
-    PROVIDER_LLM: input.PROVIDER_LLM ?? 'mock',
+    PROVIDER_LLM: input.PROVIDER_LLM ?? "mock",
   });
 
   if (!result.success) {
-    const keys = [...new Set(result.error.issues.map(issue => issue.path.join('.')))];
-    throw new Error(`Invalid configuration: ${keys.join(', ')}`);
+    const keys = [
+      ...new Set(result.error.issues.map((issue) => issue.path.join("."))),
+    ];
+    throw new Error(`Invalid configuration: ${keys.join(", ")}`);
   }
 
   return Object.freeze(result.data);
@@ -97,12 +100,12 @@ must be visibly labeled and must not authorize a publicly deployed live service.
 
 ## Local, Compose, and AWS are different delivery paths
 
-| Environment | Configuration delivery | Secret delivery |
-| --- | --- | --- |
-| Local processes | Safe defaults or an explicitly loaded local `.env` | Optional local `.env`, never tracked |
-| Docker Compose | Explicit service `environment` entries and container-specific URLs | Explicit opt-in service environment or mounted secret file |
-| ECS Fargate | Task configuration, with SSM references where appropriate | Task-definition `secrets` references to Secrets Manager |
-| Static UI build | Allowlisted build-time public values | No runtime browser secrets; upload tokens stay in the build process |
+| Environment     | Configuration delivery                                             | Secret delivery                                                     |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Local processes | Safe defaults or an explicitly loaded local `.env`                 | Optional local `.env`, never tracked                                |
+| Docker Compose  | Explicit service `environment` entries and container-specific URLs | Explicit opt-in service environment or mounted secret file          |
+| ECS Fargate     | Task configuration, with SSM references where appropriate          | Task-definition `secrets` references to Secrets Manager             |
+| Static UI build | Allowlisted build-time public values                               | No runtime browser secrets; upload tokens stay in the build process |
 
 Compose's project `.env` provides interpolation values; it does not automatically inject every
 value into every container. Declare only the values a service needs. An internal URL such as

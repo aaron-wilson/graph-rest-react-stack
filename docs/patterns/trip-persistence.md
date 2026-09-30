@@ -4,12 +4,12 @@ The REST service owns trips. GraphQL will access them through REST; it will not 
 
 ## Access patterns
 
-| Operation | Key or filter | Result |
-| --- | --- | --- |
-| Read or delete a trip | Owner ID and trip ID | One private document |
-| List trips | Owner ID, ascending trip ID, opaque cursor | Up to 100 documents |
-| Batch read | Owner ID and trip IDs | Existing documents in input order |
-| Public share | Owner ID, trip ID, unpredictable token | Trip ID, city, days, and update time only |
+| Operation             | Key or filter                              | Result                                    |
+| --------------------- | ------------------------------------------ | ----------------------------------------- |
+| Read or delete a trip | Owner ID and trip ID                       | One private document                      |
+| List trips            | Owner ID, ascending trip ID, opaque cursor | Up to 100 documents                       |
+| Batch read            | Owner ID and trip IDs                      | Existing documents in input order         |
+| Public share          | Owner ID, trip ID, unpredictable token     | Trip ID, city, days, and update time only |
 
 The store requires an expected version on writes and deletes. A create expects no existing record and starts at version 1. Each edit increments the version; a stale expected version returns a conflict. Cursor pagination uses ascending, locale-independent code-unit order on trip IDs and encodes the last ID. A cursor is scoped by the caller's owner ID during listing. Paging is not a snapshot: an insert before the last returned ID will not appear later in that traversal. The memory adapter copies values on reads and writes to keep callers from mutating stored data accidentally.
 

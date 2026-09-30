@@ -1,95 +1,44 @@
-# graph-rest-react-stack
+# Wander reference stack
 
-> Centralized documentation for the project: GraphQL API (Yoga), REST API (Bun + Hono), and React UI (Next.js + Vite + urql).
+Wander is a trip planner with three independently runnable application layers: a static Next.js UI, a GraphQL Yoga planner, and a Bun/Hono domain API. This repository owns the teaching references, local Compose topology, foundation CDK app and deployment orchestration. Keep all four repositories in sibling directories.
 
-## Table of Contents
+| Repository               | Responsibility                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `react-ui`               | React interaction, typed urql operations, authenticated streaming, static MDX and local responsive images |
+| `graph-api`              | GraphQL views, request-local DataLoader batching, planning providers and generation lifecycle             |
+| `rest-api`               | Validated trip rules, ownership, versioned edits, memory/DynamoDB persistence and OpenAPI                 |
+| `graph-rest-react-stack` | References, Compose, platform infrastructure, verification and release orchestration                      |
 
-* [Overview](#overview)
-* [Scope](#scope)
-* [Repositories](#repositories)
-* [Tech Stack Overview](#tech-stack-overview)
-* [Getting Started](#getting-started)
-* [Contributing](#contributing)
-* [License](#license)
+After dependencies and images are available, the default demo uses only local services: deterministic planning adapters, memory persistence, `Bearer demo` identity and disabled telemetry/browser reporting. Memory resets on REST restart. Optional DynamoDB Local provides durability. Live mode verifies Cognito tokens in both APIs and requires a public PKCE browser client.
 
----
+## Run locally
 
-## Overview
+Use the pinned lockfiles: Bun 1.2.21 for REST, pnpm 10.15.0 for graph/platform and pnpm 11.18.0 for UI. Containers and inactive workflows select Node 24; local verification records its actual runtime. Dependency setup is an explicit prerequisite, never part of a check.
 
-This repository serves as the centralized documentation hub. Describing the architecture, design decisions, and usage patterns across all three primary codebases:
+From this directory, with Docker available:
 
-1. **GraphQL API** — TypeScript-first, Yoga, DynamoDB, Cognito
-2. **REST API** — TypeScript-first, Bun + Hono, DynamoDB, Cognito
-3. **React UI** — TypeScript, Next.js + Vite, GraphQL (urql), Tailwind, Sentry
+```sh
+docker compose --env-file /dev/null up --build -d --wait
+node scripts/smoke.mjs
+docker compose --env-file /dev/null down -v
+```
 
-It provides reference guides, best practices, and setup instructions to onboard developers quickly and maintain consistency across services.
+The UI listens on `http://localhost:3001`, GraphQL on `http://localhost:4000/graphql`, and REST/Swagger on `http://localhost:3000/docs`. For installed host dependencies, each service README supplies a local command. No AWS account or vendor key is needed for the demo.
 
----
+## Verification and releases
 
-## Scope
+```sh
+node scripts/verify-repo.mjs hub
+node scripts/verify-repo.mjs rest-api
+node scripts/verify-repo.mjs graph-api
+node scripts/verify-repo.mjs react-ui --e2e
+node scripts/check-env.mjs
+node scripts/check-workflows.mjs
+bash scripts/docker-acceptance.sh
+```
 
-* Architectural overviews for GraphQL and REST APIs and frontend React UI
-* Coding conventions and type safety guidelines
-* CI/CD and deployment patterns
-* Testing strategy (unit, component, integration, E2E)
-* Observability and monitoring guidance
-* Optional tooling (MDX docs, image optimization)
+These entrypoints use installed binaries, real tests and fake-input offline synth. Docker acceptance starts clean volumes, tests memory and DynamoDB profiles, inspects volume persistence and cleans up. It fails when Docker is unavailable. The UI command runs the installed Chrome journey; Firefox/WebKit need their existing Playwright browsers. Cloud deployments, real providers, hosted sign-in and vendor exports remain live-unverified. Workflow templates are deliberately inactive under `.github/workflow-templates/*.yml.disabled`; no automatic CI, deployment or scheduled activity is enabled. Deployment orchestration defaults to dry-run and requires explicit `--execute`.
 
----
+## Learning index
 
-## Repositories
-
-| Repo                                                   | Purpose                   | Key Features                                                                                                     |
-| ------------------------------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| [graph-api](https://github.com/aaron-wilson/graph-api) | Yoga-based GraphQL server | Type-safe schema, DynamoDB, Cognito, OpenTelemetry + New Relic, Vitest + Supertest                               |
-| [rest-api](https://github.com/aaron-wilson/rest-api)   | Bun + Hono backend        | Fully typed REST routes, OpenAPI, DynamoDB, Cognito, Vitest + Supertest                                          |
-| [react-ui](https://github.com/aaron-wilson/react-ui)   | Frontend application      | Next.js + React, urql GraphQL client, Tailwind CSS, MDX docs, Vitest (unit/component) + Playwright (E2E), Sentry |
-
----
-
-## Tech Stack Overview
-
-| Layer                   | GraphQL API               | REST API                                        | React UI                                   |
-| ----------------------- | ------------------------- | ----------------------------------------------- | ------------------------------------------ |
-| **Language**            | TypeScript                | TypeScript                                      | TypeScript                                 |
-| **Runtime / Framework** | Node.js 20 + Yoga         | Bun + Hono                                      | Node.js + Next.js + React                  |
-| **Database**            | AWS DynamoDB              | AWS DynamoDB                                    |                                            |
-| **Auth**                | AWS Cognito               | AWS Cognito                                     | GraphQL client integration (urql)          |
-| **Validation**          | Zod                       | Zod                                             |                                            |
-| **Testing**             | Vitest + Supertest        | Vitest + Supertest                              | Vitest (unit/component) + Playwright (E2E) |
-| **CI/CD**               | GitHub Actions + AWS CDK  | GitHub Actions + AWS CDK + Docker + ECS Fargate | GitHub Actions + AWS CDK + S3 + CloudFront |
-| **Observability**       | OpenTelemetry → New Relic | OpenTelemetry → New Relic                       | Sentry (frontend errors & performance)     |
-| **Styling**             |                           |                                                 | Tailwind CSS                               |
-| **Documentation**       |                           | OpenAPI                                         | MDX documentation                          |
-
----
-
-## Getting Started
-
-### Developer Onboarding
-
-1. Clone the individual repositories.
-2. Follow the respective README for environment setup, local development, and testing.
-3. Refer to this documentation repo for:
-
-   * Architecture diagrams
-   * CI/CD flow explanations
-   * Observability & monitoring setup
-   * API conventions and type safety patterns
-   * Deployment guides for AWS resources
-
----
-
-## Contributing
-
-* Follow consistent **TypeScript-first** patterns
-* Write **unit, component, integration, or E2E tests** as appropriate
-* Ensure observability hooks (OpenTelemetry / Sentry) are included for new features
-* Update documentation in this repo for architecture or API changes
-* Submit PRs with clear descriptions and follow the repository’s linting rules
-
----
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+[docs/README.md](docs/README.md) indexes the architecture, patterns, implementation inventory and verification evidence. [docs/verification.md](docs/verification.md) records local results and prerequisite gaps. The UI ships selected committed teaching snapshots and requires no documentation server at runtime.

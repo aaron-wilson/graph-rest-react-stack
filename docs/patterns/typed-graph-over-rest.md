@@ -12,11 +12,21 @@ For example, this query asks for five trip fields covering four distinct IDs, on
 
 ```graphql
 {
-  a: trip(id: "…") { id }
-  b: trip(id: "…") { id }
-  c: trip(id: "…") { id }
-  again: trip(id: "…same as a…") { city }
-  missing: trip(id: "00000000-0000-4000-8000-00000000abcd") { id }
+  a: trip(id: "…") {
+    id
+  }
+  b: trip(id: "…") {
+    id
+  }
+  c: trip(id: "…") {
+    id
+  }
+  again: trip(id: "…same as a…") {
+    city
+  }
+  missing: trip(id: "00000000-0000-4000-8000-00000000abcd") {
+    id
+  }
 }
 ```
 

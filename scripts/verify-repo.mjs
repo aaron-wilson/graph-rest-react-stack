@@ -45,8 +45,34 @@ const run = (cwd, command, args) => {
     });
 };
 try {
+  if (name === "react-ui" || name === "hub") {
+    const envDirectory = name === "hub" ? resolve(root, "platform-cdk") : dir;
+    if (
+      readdirSync(envDirectory).some(
+        (file) => /^\.env(?:\.|$)/.test(file) && file !== ".env.example",
+      )
+    )
+      throw new Error(
+        "Remove local UI/platform env files before verification; their tools load them automatically",
+      );
+  }
   run(root, "node", ["scripts/check-env.mjs", name]);
   if (name === "hub") {
+    run(root, resolve(root, "../rest-api/node_modules/.bin/prettier"), [
+      "--check",
+      "README.md",
+      "docs",
+      "scripts",
+      "compose.yaml",
+      "telemetry",
+    ]);
+    run(root, resolve(root, "../rest-api/node_modules/.bin/eslint"), [
+      "--config",
+      "../rest-api/eslint.config.ts",
+      "scripts",
+    ]);
+    run(root, "node", ["scripts/check-workflows.mjs"]);
+    run(root, "bash", ["-n", "scripts/docker-acceptance.sh"]);
     run(resolve(root, "platform-cdk"), "tsc", ["--noEmit"]);
     run(resolve(root, "platform-cdk"), "vitest", ["run"]);
     run(resolve(root, "platform-cdk"), "prettier", ["--check", "."]);
@@ -79,14 +105,6 @@ try {
         throw new Error("OpenAPI snapshot drift");
     }
     if (name === "react-ui") {
-      if (
-        readdirSync(dir).some(
-          (file) => /^\.env(?:\.|$)/.test(file) && file !== ".env.example",
-        )
-      )
-        throw new Error(
-          "Remove local UI env files before verification; Next loads them automatically",
-        );
       for (const key of [
         "codegen:check",
         "schema:check",

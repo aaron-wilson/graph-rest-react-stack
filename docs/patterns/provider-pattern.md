@@ -1,9 +1,6 @@
 # The provider pattern
 
-> **Implementation status:** This document describes the target architecture and illustrative
-> patterns, not completed features. The current stack is an early API prototype with no UI app.
-> The showcase will use a static Next.js UI, REST-owned persistence, and optional cloud providers;
-> live credentials and deployments are not prerequisites for the local demo.
+> **Implementation status:** The services implement deterministic default planning providers, memory/DynamoDB persistence, demo/live auth and disabled-by-default telemetry/reporting. The examples below explain the reusable design rather than reproducing every local implementation. Real vendor calls and cloud deployment remain unverified.
 
 This is the load-bearing pattern of the whole stack: every external dependency — an LLM, a weather
 API, persistence, identity, telemetry, browser error reporting — is reached through a hand-written
@@ -21,7 +18,7 @@ Three distinct failures, which people usually notice in this order.
 **Demo fragility.** A new engineer clones the repo. To see the app do anything, they need an API
 key, a cloud account, a database, and a VPN. The first hour is spent on credentials, and the app is
 never runnable on a plane, in an interview, or in CI. Anything that cannot run offline is not really
-testable either — it is only *observable in staging*.
+testable either — it is only _observable in staging_.
 
 **Untestable code.** When `planTrip()` calls `fetch('https://api.vendor.com/...')` directly, you
 cannot test the planning logic without either hitting the network (slow, flaky, rate-limited,
@@ -33,7 +30,7 @@ fused, so you can only exercise them together.
 costs a quarter. A vendor's SDK types leak outward: `OpenAI.Chat.Completion` becomes the type flowing
 through your service layer, its error classes become the ones your `catch` blocks name, its retry
 semantics become assumptions your callers encode. When pricing changes or the vendor has an outage,
-the migration touches every file that ever saw a response, because the vendor's data model *is* your
+the migration touches every file that ever saw a response, because the vendor's data model _is_ your
 data model.
 
 The pattern's promise: business logic that has never heard of a vendor, a full-featured offline mode
@@ -48,15 +45,15 @@ which one applies tells you what each file is allowed to do.
 
 ### Ports and Adapters (Hexagonal Architecture) — yes, this is the frame
 
-Alistair Cockburn's hexagonal architecture says: the application core defines *ports* — interfaces
+Alistair Cockburn's hexagonal architecture says: the application core defines _ports_ — interfaces
 expressed entirely in the application's own vocabulary — and the outside world reaches the core only
-through *adapters* that translate between a port and some specific technology. The core does not
+through _adapters_ that translate between a port and some specific technology. The core does not
 import the outside; the outside is plugged into the core.
 
 That is exactly what is happening. `port.ts` is written in the language of the domain (`Forecast`,
 `City`, `PlanChunk`), never the vendor's (`WttrResponse`, `ChatCompletionChunk`). `wttr.ts` is a
-*driven* adapter: the application calls out through it. (Hexagonal also has *driving* adapters —
-things that call *into* the app, like an HTTP route or a GraphQL resolver. Those exist in this stack
+_driven_ adapter: the application calls out through it. (Hexagonal also has _driving_ adapters —
+things that call _into_ the app, like an HTTP route or a GraphQL resolver. Those exist in this stack
 too; the provider pattern is only about the driven side.)
 
 The direction of the dependency is the whole point: `adapters/wttr.ts` imports `port.ts`, never the
@@ -68,10 +65,10 @@ Inversion Principle applied at the process boundary.
 The Gang of Four's Strategy pattern: define a family of algorithms, encapsulate each one, make them
 interchangeable at runtime behind a common interface. `mock` and `wttr` are two strategies for
 "obtain a forecast," and the caller cannot tell which one it holds. The classical framing assumes
-the *client* selects the strategy; here the client never does — selection is hoisted out to the
+the _client_ selects the strategy; here the client never does — selection is hoisted out to the
 registry so no business code ever names an implementation. That is a small, deliberate deviation.
 
-### Factory — yes, but say *which* factory
+### Factory — yes, but say _which_ factory
 
 Two different factory ideas apply at two different levels, and conflating them is the usual source
 of confusion:
@@ -80,8 +77,8 @@ of confusion:
   closed-over object satisfying the port. This is a factory in the plain sense: a function that
   builds a configured instance without exposing a constructor or a class.
 - The registry is closer to a **Simple Factory** (sometimes "parameterized factory"): given a
-  discriminating value, it returns the right implementation. It is *not* GoF **Abstract Factory**
-  (which produces families of related products designed to be used together) and *not* GoF **Factory
+  discriminating value, it returns the right implementation. It is _not_ GoF **Abstract Factory**
+  (which produces families of related products designed to be used together) and _not_ GoF **Factory
   Method** (which relies on subclasses overriding a creation hook — there is no inheritance here at
   all).
 
@@ -89,24 +86,24 @@ of confusion:
 
 Providers are constructed once at composition root — the place where the app is wired together —
 and passed into business logic as parameters or as one context object. That is dependency injection.
-What this stack deliberately does *not* have is a DI *container*: no decorators, no reflection, no
+What this stack deliberately does _not_ have is a DI _container_: no decorators, no reflection, no
 service locator, no `@Injectable()`, no string tokens resolved at runtime. Passing an argument is
 already dependency injection; a container mostly adds a runtime graph that your type checker cannot
 see. Plain parameters keep the wiring visible and statically checked.
 
-### Names that do *not* apply
+### Names that do _not_ apply
 
-- **Adapter (GoF)** — confusingly, not quite. The GoF Adapter converts one *existing* interface into
-  another *existing* one. Our adapters do that translation, but the port was designed first, for us,
+- **Adapter (GoF)** — confusingly, not quite. The GoF Adapter converts one _existing_ interface into
+  another _existing_ one. Our adapters do that translation, but the port was designed first, for us,
   which makes them closer to hexagonal adapters than to the GoF pattern. Harmless overlap; just do
   not go looking for a GoF `Adaptee`.
-- **Facade** — a facade simplifies a subsystem you still depend on. A port *replaces* the dependency
+- **Facade** — a facade simplifies a subsystem you still depend on. A port _replaces_ the dependency
   in the type system. If your "port" is shaped exactly like one vendor's SDK, you have built a facade
   and you will discover this on the day you try to add a second vendor.
 - **Repository** — a specialization, not a synonym. The store port in `rest-api` happens to be a
   repository (collection-of-aggregates semantics). The weather port is not a repository; it is just a
   port.
-- **Anti-corruption layer** — DDD's ACL is the same *idea* applied between bounded contexts, and the
+- **Anti-corruption layer** — DDD's ACL is the same _idea_ applied between bounded contexts, and the
   translation step inside each adapter is doing ACL work. Fair to use the term in discussion; not a
   different structure.
 
@@ -136,7 +133,7 @@ a design discussion.
 
 ```ts
 // src/providers/weather/port.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 export const ForecastQuerySchema = z.object({
   city: z.string().min(1),
@@ -145,7 +142,7 @@ export const ForecastQuerySchema = z.object({
 
 export const DailyForecastSchema = z.object({
   date: z.string(), // ISO date, no time component
-  condition: z.enum(['clear', 'cloudy', 'rain', 'snow', 'storm']),
+  condition: z.enum(["clear", "cloudy", "rain", "snow", "storm"]),
   highC: z.number(),
   lowC: z.number(),
   precipitationChance: z.number().min(0).max(1),
@@ -169,7 +166,7 @@ export interface WeatherProvider {
 Three rules govern this file:
 
 1. **Domain vocabulary only.** `condition: 'rain'` is our word. If the vendor says `"Patchy rain
-   possible"`, translating that is the adapter's job, not the caller's.
+possible"`, translating that is the adapter's job, not the caller's.
 2. **Narrow.** A port has the operations the application actually uses. Do not mirror a vendor's API
    surface "in case we need it" — every unused method is a method each future adapter must implement.
 3. **Schemas and types together.** The Zod schema is the source of truth; the TypeScript type is
@@ -184,13 +181,13 @@ import {
   type Forecast,
   type ForecastQuery,
   type WeatherProvider,
-} from '../port';
+} from "../port";
 
 export interface MockWeatherConfig {
   latencyMs: number;
 }
 
-const CONDITIONS = ['clear', 'cloudy', 'rain', 'snow', 'storm'] as const;
+const CONDITIONS = ["clear", "cloudy", "rain", "snow", "storm"] as const;
 
 // fnv-1a: tiny, stable across runs and machines, which is the only property we need
 function hash(input: string): number {
@@ -217,7 +214,9 @@ function delay(ms: number): Promise<void> {
 }
 
 /** Deterministic forecasts seeded from the query, so the same input always yields the same output. */
-export function createMockWeatherAdapter(config: MockWeatherConfig): WeatherProvider {
+export function createMockWeatherAdapter(
+  config: MockWeatherConfig,
+): WeatherProvider {
   return {
     async getForecast(query: ForecastQuery): Promise<Forecast> {
       if (config.latencyMs > 0) await delay(config.latencyMs);
@@ -227,8 +226,11 @@ export function createMockWeatherAdapter(config: MockWeatherConfig): WeatherProv
         const roll = next();
         const high = 8 + Math.round(next() * 22);
         return {
-          date: new Date(Date.UTC(2025, 0, index + 1)).toISOString().slice(0, 10),
-          condition: CONDITIONS[Math.floor(roll * CONDITIONS.length)] ?? 'clear',
+          date: new Date(Date.UTC(2025, 0, index + 1))
+            .toISOString()
+            .slice(0, 10),
+          condition:
+            CONDITIONS[Math.floor(roll * CONDITIONS.length)] ?? "clear",
           highC: high,
           lowC: high - 6,
           precipitationChance: Math.round(next() * 100) / 100,
@@ -248,14 +250,14 @@ has drifted away from the port after a schema change, at the moment it drifts.
 
 ```ts
 // src/providers/weather/adapters/wttr.ts
-import { z } from 'zod';
+import { z } from "zod";
 import {
   ForecastSchema,
   type DailyForecast,
   type Forecast,
   type ForecastQuery,
   type WeatherProvider,
-} from '../port';
+} from "../port";
 
 export interface WttrConfig {
   baseUrl: string;
@@ -283,22 +285,22 @@ const WttrPayloadSchema = z.object({
 /** Vendor errors and vendor shapes stop here; callers see ProviderError and Forecast. */
 export class ProviderError extends Error {
   constructor(
-    readonly code: 'unavailable' | 'timeout' | 'invalid_response',
+    readonly code: "unavailable" | "timeout" | "invalid_response",
     message: string,
     readonly cause?: unknown,
   ) {
     super(message);
-    this.name = 'ProviderError';
+    this.name = "ProviderError";
   }
 }
 
-function toCondition(description: string): DailyForecast['condition'] {
+function toCondition(description: string): DailyForecast["condition"] {
   const text = description.toLowerCase();
-  if (text.includes('thunder')) return 'storm';
-  if (text.includes('snow') || text.includes('sleet')) return 'snow';
-  if (text.includes('rain') || text.includes('drizzle')) return 'rain';
-  if (text.includes('cloud') || text.includes('overcast')) return 'cloudy';
-  return 'clear';
+  if (text.includes("thunder")) return "storm";
+  if (text.includes("snow") || text.includes("sleet")) return "snow";
+  if (text.includes("rain") || text.includes("drizzle")) return "rain";
+  if (text.includes("cloud") || text.includes("overcast")) return "cloudy";
+  return "clear";
 }
 
 export function createWttrWeatherAdapter(config: WttrConfig): WeatherProvider {
@@ -313,29 +315,36 @@ export function createWttrWeatherAdapter(config: WttrConfig): WeatherProvider {
       try {
         response = await doFetch(url, { signal });
       } catch (cause) {
-        const timedOut = cause instanceof Error && cause.name === 'TimeoutError';
+        const timedOut =
+          cause instanceof Error && cause.name === "TimeoutError";
         throw new ProviderError(
-          timedOut ? 'timeout' : 'unavailable',
+          timedOut ? "timeout" : "unavailable",
           `weather lookup failed for ${query.city}`,
           cause,
         );
       }
 
       if (!response.ok) {
-        throw new ProviderError('unavailable', `weather upstream returned ${response.status}`);
+        throw new ProviderError(
+          "unavailable",
+          `weather upstream returned ${response.status}`,
+        );
       }
 
       const parsed = WttrPayloadSchema.safeParse(await response.json());
       if (!parsed.success) {
-        throw new ProviderError('invalid_response', 'weather upstream payload did not match schema');
+        throw new ProviderError(
+          "invalid_response",
+          "weather upstream payload did not match schema",
+        );
       }
 
       const days = parsed.data.weather.slice(0, query.days).map((day) => ({
         date: day.date,
-        condition: toCondition(day.hourly[0]?.weatherDesc[0]?.value ?? ''),
+        condition: toCondition(day.hourly[0]?.weatherDesc[0]?.value ?? ""),
         highC: Number(day.maxtempC),
         lowC: Number(day.mintempC),
-        precipitationChance: Number(day.hourly[0]?.chanceofrain ?? '0') / 100,
+        precipitationChance: Number(day.hourly[0]?.chanceofrain ?? "0") / 100,
       }));
 
       return ForecastSchema.parse({ city: query.city, days });
@@ -356,25 +365,25 @@ patching.
 
 ```ts
 // src/providers/weather/index.ts
-import { env } from '../../config/env';
-import { createMockWeatherAdapter } from './adapters/mock';
-import { createWttrWeatherAdapter } from './adapters/wttr';
-import type { WeatherProvider } from './port';
+import { env } from "../../config/env";
+import { createMockWeatherAdapter } from "./adapters/mock";
+import { createWttrWeatherAdapter } from "./adapters/wttr";
+import type { WeatherProvider } from "./port";
 
 /** The only place in the codebase that knows which weather implementation is live. */
 export function createWeatherProvider(): WeatherProvider {
   switch (env.PROVIDER_WEATHER) {
-    case 'wttr':
+    case "wttr":
       return createWttrWeatherAdapter({
         baseUrl: env.WTTR_BASE_URL,
         timeoutMs: env.PROVIDER_TIMEOUT_MS,
       });
-    case 'mock':
+    case "mock":
       return createMockWeatherAdapter({ latencyMs: env.MOCK_LATENCY_MS });
   }
 }
 
-export type { Forecast, ForecastQuery, WeatherProvider } from './port';
+export type { Forecast, ForecastQuery, WeatherProvider } from "./port";
 ```
 
 Because `env.PROVIDER_WEATHER` is a Zod enum, the `switch` is exhaustive: adding `'openweather'` to
@@ -387,8 +396,8 @@ Build every provider once, at startup, and pass the bundle down:
 
 ```ts
 // src/providers/index.ts
-import { createWeatherProvider } from './weather';
-import type { WeatherProvider } from './weather/port';
+import { createWeatherProvider } from "./weather";
+import type { WeatherProvider } from "./weather/port";
 
 export interface Providers {
   weather: WeatherProvider;
@@ -401,7 +410,7 @@ export function createProviders(): Providers {
 
 ```ts
 // src/services/planner.ts
-import type { Providers } from '../providers';
+import type { Providers } from "../providers";
 
 export interface DaySketch {
   date: string;
@@ -417,7 +426,7 @@ export async function sketchDays(
   const forecast = await providers.weather.getForecast({ city, days });
   return forecast.days.map((day) => ({
     date: day.date,
-    indoor: day.precipitationChance > 0.5 || day.condition === 'storm',
+    indoor: day.precipitationChance > 0.5 || day.condition === "storm",
   }));
 }
 ```
@@ -427,25 +436,31 @@ to a mock. Its test is three lines and needs no mocking library:
 
 ```ts
 // tests/unit/planner.test.ts
-import { describe, expect, it } from 'vitest';
-import { sketchDays } from '../../src/services/planner';
-import type { Providers } from '../../src/providers';
+import { describe, expect, it } from "vitest";
+import { sketchDays } from "../../src/services/planner";
+import type { Providers } from "../../src/providers";
 
 const providers: Providers = {
   weather: {
     getForecast: async ({ city }) => ({
       city,
       days: [
-        { date: '2025-01-01', condition: 'storm', highC: 9, lowC: 3, precipitationChance: 0.9 },
+        {
+          date: "2025-01-01",
+          condition: "storm",
+          highC: 9,
+          lowC: 3,
+          precipitationChance: 0.9,
+        },
       ],
     }),
   },
 };
 
-describe('sketchDays', () => {
-  it('keeps stormy days indoors', async () => {
-    await expect(sketchDays(providers, 'Lisbon', 1)).resolves.toEqual([
-      { date: '2025-01-01', indoor: true },
+describe("sketchDays", () => {
+  it("keeps stormy days indoors", async () => {
+    await expect(sketchDays(providers, "Lisbon", 1)).resolves.toEqual([
+      { date: "2025-01-01", indoor: true },
     ]);
   });
 });
@@ -459,7 +474,7 @@ fixture server, no cleanup.
 ## 4. Why Zod at the boundary, when TypeScript already has interfaces
 
 TypeScript types are erased at compile time. `await response.json()` is `any` (or `unknown`); every
-annotation you place on it is a *promise you are making to the compiler*, not a check. When the
+annotation you place on it is a _promise you are making to the compiler_, not a check. When the
 vendor renames a field, ships `null` where it used to send `0`, or returns an HTML error page with a
 200, TypeScript is silent — and the bad value travels until something far away fails with a message
 that names neither the vendor nor the field.
@@ -468,7 +483,7 @@ A Zod schema is a value that exists at runtime, so it can actually inspect the p
 the boundary buys four things:
 
 1. **Failure at the boundary, with a useful message.** `invalid_type at weather[0].maxtempC:
-   expected string, received null` names the vendor, the field, and the expectation. Compare with
+expected string, received null` names the vendor, the field, and the expectation. Compare with
    `NaN` surfacing three modules later.
 2. **A type you have earned.** After `ForecastSchema.parse(x)`, the value genuinely is a `Forecast` —
    the type is a consequence of a check rather than an assertion. This is the one place where
@@ -506,7 +521,7 @@ turns snapshot tests, screenshot tests, and E2E assertions from flake sources in
 2. **No wall-clock time in output.** Derive dates from the request (a trip's start date) or from a
    fixed epoch. `new Date()` in a mock means a snapshot that expires at midnight.
 3. **Stable ordering.** Sort explicitly before returning. `Object.keys`, `Map` iteration, and
-   `Array.sort` on equal keys are stable enough in practice but not stable *by intent* — say what you
+   `Array.sort` on equal keys are stable enough in practice but not stable _by intent_ — say what you
    mean.
 4. **Deterministic ids.** Derive them from the seed (`trip_${hash(input).toString(36)}`), not from
    `crypto.randomUUID()`. This stack keeps a seedable id helper in the domain layer for exactly this.
@@ -517,7 +532,7 @@ turns snapshot tests, screenshot tests, and E2E assertions from flake sources in
    pagination, truncation, or empty states. Seeded mocks should return a realistic distribution:
    varying lengths, some empty arrays, occasional missing optional fields.
 7. **Errors are reachable.** Give the mock a deterministic way to fail — a magic input (`city ===
-   'Nowhere'` → `ProviderError('unavailable')`) or a configured failure rate keyed off the seed.
+'Nowhere'` → `ProviderError('unavailable')`) or a configured failure rate keyed off the seed.
    Error paths that cannot be exercised offline will not be tested.
 8. **The mock is bound by the same port, and proves it.** Run one shared contract test suite against
    every adapter (mock included), skipping real ones unless their env var is set. That suite is what
@@ -532,7 +547,7 @@ Say you need place search.
 1. **Write `port.ts`.** Zod schemas for input and output plus the interface, in domain vocabulary.
    Start with the single operation your first caller actually needs.
 2. **Write `adapters/mock.ts`.** Seeded from the query, validating its own output. Write this
-   *before* the real adapter — it forces the port to be shaped by your needs rather than by a
+   _before_ the real adapter — it forces the port to be shaped by your needs rather than by a
    vendor's response.
 3. **Add the switch to `src/config/env.ts`.** `PROVIDER_PLACES: z.enum(['mock', 'overpass']).default('mock')`,
    plus any adapter config (base URL, timeout, optional key). Add every new variable to
@@ -566,14 +581,14 @@ in the port — not in the caller.
 
 ```ts
 // wrong
-if (env.PROVIDER_LLM === 'mock') {
+if (env.PROVIDER_LLM === "mock") {
   return cannedItinerary();
 }
 ```
 
 The moment this exists, mock and real behavior diverge, the mock stops being a faithful
 implementation, and every future branch has to be duplicated in both worlds. If a caller needs to
-know something, that something is a *capability* — model it as a port field
+know something, that something is a _capability_ — model it as a port field
 (`supportsStreaming: boolean`), not as a vendor name.
 
 **Leaking vendor types upward.** A port that returns `ChatCompletionChunk`, or a service that
@@ -583,7 +598,7 @@ resolver layers for the vendor package name — there should be zero hits outsid
 
 **A port shaped like one vendor's API.** If `port.ts` has `temperature`, `top_p`, and
 `presence_penalty` on it, you have modeled a specific vendor rather than the capability. Design the
-port against what the *application* needs, then let each adapter map those needs onto its vendor's
+port against what the _application_ needs, then let each adapter map those needs onto its vendor's
 knobs.
 
 **Mocks that drift.** The real adapter learns to paginate; the mock still returns everything at
@@ -630,21 +645,21 @@ there to make the shape recognizable, not to be copied.
 Classic implementations are in JavaScript to keep them free of type-system noise; the "here" side is
 in TypeScript because that is what the codebase actually is.
 
-| # | Pattern | Origin | Status here |
-| - | ------- | ------ | ----------- |
-| 10.1 | Ports and Adapters (Hexagonal) | Cockburn | Used, faithfully |
-| 10.2 | Dependency Inversion Principle | SOLID | Used — the mechanism underneath 10.1 |
-| 10.3 | Strategy | GoF | Used, with one deviation |
-| 10.4 | Simple Factory | folk pattern | Used — the registry |
-| 10.5 | Factory Method | GoF | **Not used** |
-| 10.6 | Abstract Factory | GoF | **Not used**, deliberately |
-| 10.7 | Dependency Injection | Fowler | Used, by hand |
-| 10.8 | Service Locator / DI container | Fowler | **Not used**, deliberately |
-| 10.9 | Adapter | GoF | Partial — same mechanics, different intent |
-| 10.10 | Facade | GoF | **Not used** — and mistaking it for a port is a bug |
-| 10.11 | Repository | Fowler / DDD | Partial — one capability only |
-| 10.12 | Registry | Fowler | Name borrowed, pattern not used |
-| 10.13 | Anti-Corruption Layer | DDD | Used in spirit, not as a separate structure |
+| #     | Pattern                        | Origin       | Status here                                         |
+| ----- | ------------------------------ | ------------ | --------------------------------------------------- |
+| 10.1  | Ports and Adapters (Hexagonal) | Cockburn     | Used, faithfully                                    |
+| 10.2  | Dependency Inversion Principle | SOLID        | Used — the mechanism underneath 10.1                |
+| 10.3  | Strategy                       | GoF          | Used, with one deviation                            |
+| 10.4  | Simple Factory                 | folk pattern | Used — the registry                                 |
+| 10.5  | Factory Method                 | GoF          | **Not used**                                        |
+| 10.6  | Abstract Factory               | GoF          | **Not used**, deliberately                          |
+| 10.7  | Dependency Injection           | Fowler       | Used, by hand                                       |
+| 10.8  | Service Locator / DI container | Fowler       | **Not used**, deliberately                          |
+| 10.9  | Adapter                        | GoF          | Partial — same mechanics, different intent          |
+| 10.10 | Facade                         | GoF          | **Not used** — and mistaking it for a port is a bug |
+| 10.11 | Repository                     | Fowler / DDD | Partial — one capability only                       |
+| 10.12 | Registry                       | Fowler       | Name borrowed, pattern not used                     |
+| 10.13 | Anti-Corruption Layer          | DDD          | Used in spirit, not as a separate structure         |
 
 ---
 
@@ -657,14 +672,23 @@ implements it from the outside. Nothing in the core imports anything from the ed
 // core/ports/notifier.js — the port, owned by the application
 // (in JS an "interface" is just a documented shape; the discipline is the same)
 export function notifyLateTrip(notifier, trip) {
-  return notifier.send({ to: trip.owner, subject: 'Delay', body: `${trip.city} is delayed` });
+  return notifier.send({
+    to: trip.owner,
+    subject: "Delay",
+    body: `${trip.city} is delayed`,
+  });
 }
 
 // edge/adapters/smtp-notifier.js — the adapter, owned by the edge
 export function createSmtpNotifier(smtpClient) {
   return {
     send: ({ to, subject, body }) =>
-      smtpClient.sendMail({ to, subject, text: body, from: 'noreply@example.invalid' }),
+      smtpClient.sendMail({
+        to,
+        subject,
+        text: body,
+        from: "noreply@example.invalid",
+      }),
   };
 }
 ```
@@ -677,7 +701,7 @@ application vocabulary. `adapters/wttr.ts` is a driven adapter that translates o
 vendor's and back. The import arrow only ever points inward: adapters import the port, the port
 imports nothing.
 
-The one thing worth noting is that hexagonal architecture also covers *driving* adapters — the things
+The one thing worth noting is that hexagonal architecture also covers _driving_ adapters — the things
 that call into the application, like an HTTP route or a GraphQL resolver. Those exist in this stack
 (`src/routes/`, `src/graphql/resolvers.ts`) but are not what "provider" refers to. The provider
 pattern is the driven half only.
@@ -694,7 +718,7 @@ and the abstraction is owned by the high-level side.
 
 ```js
 // before: policy depends on detail
-import { MySqlTripStore } from './mysql-trip-store.js';
+import { MySqlTripStore } from "./mysql-trip-store.js";
 export function archiveOldTrips() {
   const store = new MySqlTripStore(); // policy now knows about MySQL
   return store.deleteOlderThan(Date.now() - 31536000000);
@@ -708,10 +732,10 @@ export function archiveOldTrips(store) {
 
 **Here.** Every provider consumption is the "after" case: `sketchDays(providers, city, days)` receives
 its dependency rather than constructing it. The inversion is visible in the file system — the
-abstraction (`port.ts`) sits *inside* `src/providers/<capability>/`, owned by the application, and
+abstraction (`port.ts`) sits _inside_ `src/providers/<capability>/`, owned by the application, and
 the detail (`adapters/wttr.ts`) sits below it and imports it.
 
-Note that a provider bundle passed as a parameter is a *coarse* application of the principle: a
+Note that a provider bundle passed as a parameter is a _coarse_ application of the principle: a
 service receives the whole `Providers` object rather than only the two ports it uses. That is a
 deliberate ergonomic trade — it keeps signatures stable as a service grows — and it is why the
 interface-segregation argument shows up as advice ("ports that are secretly two ports" in section 8)
@@ -739,14 +763,14 @@ renderResults(activities, byPrice); // the caller picks
 forecast," interchangeable behind `WeatherProvider`, and the consumer cannot tell which one it holds.
 That much is textbook.
 
-**Why ours is not quite classic.** In the GoF formulation the *client* chooses the strategy, and
+**Why ours is not quite classic.** In the GoF formulation the _client_ chooses the strategy, and
 choosing is part of what the client does — `renderResults(activities, byPrice)` is a legitimate call
 site. Here, selection is hoisted entirely out of every call site into a single registry, and a caller
 choosing its own adapter is an error (it is the first anti-pattern in section 8). Classical Strategy
 also often swaps the strategy repeatedly over an object's life; ours is chosen once at boot from
 immutable config and never changes for the life of the process.
 
-So: the *structure* is Strategy, the *selection policy* is intentionally more restrictive than the
+So: the _structure_ is Strategy, the _selection policy_ is intentionally more restrictive than the
 pattern describes.
 
 ---
@@ -762,9 +786,9 @@ name concrete types.
 ```js
 function createTransport(kind) {
   switch (kind) {
-    case 'http':
+    case "http":
       return createHttpTransport();
-    case 'websocket':
+    case "websocket":
       return createWebSocketTransport();
     default:
       throw new Error(`unknown transport: ${kind}`);
@@ -778,21 +802,24 @@ validated config rather than an argument:
 ```ts
 export function createWeatherProvider(): WeatherProvider {
   switch (env.PROVIDER_WEATHER) {
-    case 'wttr':
-      return createWttrWeatherAdapter({ baseUrl: env.WTTR_BASE_URL, timeoutMs: env.PROVIDER_TIMEOUT_MS });
-    case 'mock':
+    case "wttr":
+      return createWttrWeatherAdapter({
+        baseUrl: env.WTTR_BASE_URL,
+        timeoutMs: env.PROVIDER_TIMEOUT_MS,
+      });
+    case "mock":
       return createMockWeatherAdapter({ latencyMs: env.MOCK_LATENCY_MS });
   }
 }
 ```
 
-There is a second, smaller factory idea in play: each adapter file exports a factory *function*
+There is a second, smaller factory idea in play: each adapter file exports a factory _function_
 (`createWttrWeatherAdapter(config)`) that closes over its configuration and returns a plain object.
 No classes, no `new`, no constructors — which is why "factory" here never implies a class hierarchy.
 
 **Why ours is not quite classic.** The textbook version needs a `default:` clause that throws on an
 unknown value, because the input is an arbitrary string. Ours has none: `env.PROVIDER_WEATHER` is a
-Zod enum, so an invalid value fails at boot in `env.ts`, and a *valid* value with no `case` is a
+Zod enum, so an invalid value fails at boot in `env.ts`, and a _valid_ value with no `case` is a
 compile error from exhaustiveness checking. The runtime guard moves to the type system and to
 startup validation, which is strictly better — the failure happens before the process serves traffic
 instead of on the first request that takes the bad branch.
@@ -801,7 +828,7 @@ instead of on the first request that takes the bad branch.
 
 ### 10.5 Factory Method (GoF) — not used
 
-**Classic.** A base class defines an algorithm but defers *which* object to create to an overridable
+**Classic.** A base class defines an algorithm but defers _which_ object to create to an overridable
 method, and subclasses supply the concrete type.
 
 ```js
@@ -811,7 +838,7 @@ class TripReportBuilder {
     return renderer.render(trip);
   }
   createRenderer() {
-    throw new Error('subclass must implement createRenderer');
+    throw new Error("subclass must implement createRenderer");
   }
 }
 
@@ -832,23 +859,34 @@ there is no base class and no hook to override.
 
 ### 10.6 Abstract Factory (GoF) — not used, deliberately
 
-**Classic.** An interface for creating *families* of related objects that are designed to be used
+**Classic.** An interface for creating _families_ of related objects that are designed to be used
 together, so a client can switch entire families at once without mixing members.
 
 ```js
 function createMockProviderFamily() {
-  return { weather: createMockWeather(), places: createMockPlaces(), llm: createMockLlm() };
+  return {
+    weather: createMockWeather(),
+    places: createMockPlaces(),
+    llm: createMockLlm(),
+  };
 }
 function createLiveProviderFamily() {
-  return { weather: createWttrWeather(), places: createOverpassPlaces(), llm: createAnthropicLlm() };
+  return {
+    weather: createWttrWeather(),
+    places: createOverpassPlaces(),
+    llm: createAnthropicLlm(),
+  };
 }
 
-const providers = process.env.MODE === 'live' ? createLiveProviderFamily() : createMockProviderFamily();
+const providers =
+  process.env.MODE === "live"
+    ? createLiveProviderFamily()
+    : createMockProviderFamily();
 ```
 
 **Here: not used — and the reason is a requirement, not an oversight.** `createProviders()` looks
 superficially like an Abstract Factory: it returns a bundle of related objects. But it is not one,
-because there is no *family variant* to choose. Each capability resolves its own adapter from its own
+because there is no _family variant_ to choose. Each capability resolves its own adapter from its own
 env var, so `PROVIDER_LLM=anthropic` with `PROVIDER_WEATHER=mock` is a supported, ordinary
 configuration — a real LLM against seeded weather while you develop offline.
 
@@ -863,8 +901,8 @@ ends of a continuum of per-capability choices, not two families.
 ### 10.7 Dependency Injection
 
 **Classic.** An object receives its collaborators from outside rather than constructing or locating
-them. Constructor injection is the usual form; the code that does the wiring is the *composition
-root*, at the entry point.
+them. Constructor injection is the usual form; the code that does the wiring is the _composition
+root_, at the entry point.
 
 ```js
 // the collaborator arrives from outside
@@ -872,14 +910,21 @@ function createTripService(store, notifier) {
   return {
     async cancel(id) {
       const trip = await store.get(id);
-      await store.put({ ...trip, status: 'cancelled' });
-      await notifier.send({ to: trip.owner, subject: 'Cancelled', body: trip.city });
+      await store.put({ ...trip, status: "cancelled" });
+      await notifier.send({
+        to: trip.owner,
+        subject: "Cancelled",
+        body: trip.city,
+      });
     },
   };
 }
 
 // composition root — the only place that knows every concrete type
-const app = createTripService(createDynamoStore(config), createSmtpNotifier(smtp));
+const app = createTripService(
+  createDynamoStore(config),
+  createSmtpNotifier(smtp),
+);
 ```
 
 **Here.** Used throughout, in its plainest possible form. `createProviders()` is the composition
@@ -901,7 +946,7 @@ them.
 
 ```js
 const container = new Map();
-container.set('weather', createWttrWeather());
+container.set("weather", createWttrWeather());
 
 function locate(key) {
   const found = container.get(key);
@@ -911,7 +956,7 @@ function locate(key) {
 
 // dependency is fetched, not received — and invisible in the signature
 function sketchDays(city) {
-  return locate('weather').getForecast({ city, days: 3 });
+  return locate("weather").getForecast({ city, days: 3 });
 }
 ```
 
@@ -922,7 +967,7 @@ The heavier framework version (decorators, reflection metadata, string or symbol
 runtime) adds a wiring graph the type checker cannot see, and turns a missing registration into a
 runtime crash rather than a compile error.
 
-Note the naming collision: `index.ts` files in this stack are called *registries*, but a DI container
+Note the naming collision: `index.ts` files in this stack are called _registries_, but a DI container
 is what we are declining here. See 10.12.
 
 ---
@@ -937,7 +982,8 @@ expects, so two things designed independently can work together.
 // the library offers .postMessage(channel, text)
 function createChatNotifierAdapter(chatLibrary) {
   return {
-    send: ({ to, subject, body }) => chatLibrary.postMessage(to, `*${subject}*\n${body}`),
+    send: ({ to, subject, body }) =>
+      chatLibrary.postMessage(to, `*${subject}*\n${body}`),
   };
 }
 ```
@@ -946,7 +992,7 @@ function createChatNotifierAdapter(chatLibrary) {
 interfaces exactly as above — string-typed numbers become numbers, free-text `weatherDesc` becomes a
 five-value enum, `chanceofrain` of `"70"` becomes `0.7`.
 
-**Why ours is not quite classic.** GoF Adapter is a *retrofit*: both interfaces already exist, and
+**Why ours is not quite classic.** GoF Adapter is a _retrofit_: both interfaces already exist, and
 the adapter reconciles them after the fact — there is an "adaptee" whose interface you are stuck
 with, and a "target" interface someone else defined. Here the target interface was designed first,
 by us, specifically to be implemented by several vendors, and the adapter is written at the same time
@@ -954,7 +1000,7 @@ as the code that uses it. That makes ours a hexagonal adapter (10.1): a plug bui
 own, rather than a shim between two fixed things.
 
 The distinction has a practical consequence. When a GoF Adapter is awkward, you change the adapter —
-neither interface is yours. When one of ours is awkward, that is evidence the *port* is wrong, and
+neither interface is yours. When one of ours is awkward, that is evidence the _port_ is wrong, and
 changing the port is the expected fix.
 
 ---
@@ -979,7 +1025,7 @@ function createBookingFacade(sdk) {
 ```
 
 **Here: not used, and confusing it with a port is a real failure mode.** As section 2 puts it, a
-facade *simplifies* a subsystem you still depend on; a port *replaces* the dependency in the type
+facade _simplifies_ a subsystem you still depend on; a port _replaces_ the dependency in the type
 system. The tell is in the return type: the facade above hands back the SDK's `CheckoutResult`, so
 the vendor's data model is still your data model and a second vendor still means touching every
 caller.
@@ -999,9 +1045,10 @@ they were an in-memory collection.
 ```js
 function createTripRepository(db) {
   return {
-    findById: (id) => db.query('select * from trips where id = ?', [id]).then(toTrip),
-    save: (trip) => db.query('replace into trips set ?', [fromTrip(trip)]),
-    remove: (id) => db.query('delete from trips where id = ?', [id]),
+    findById: (id) =>
+      db.query("select * from trips where id = ?", [id]).then(toTrip),
+    save: (trip) => db.query("replace into trips set ?", [fromTrip(trip)]),
+    remove: (id) => db.query("delete from trips where id = ?", [id]),
   };
 }
 ```
@@ -1037,8 +1084,8 @@ const Registry = {
   },
 };
 
-Registry.register('weather', createWttrWeather());
-Registry.lookup('weather').getForecast({ city: 'Lisbon', days: 3 }); // callable from anywhere
+Registry.register("weather", createWttrWeather());
+Registry.lookup("weather").getForecast({ city: "Lisbon", days: 3 }); // callable from anywhere
 ```
 
 **Here: the word is used, the pattern is not.** This stack calls
@@ -1047,7 +1094,7 @@ no mutable map, no `register` call, and no global lookup — it is a function th
 and callers receive that object by parameter rather than reaching for it by key. Fowler's Registry is
 a form of Service Locator, which 10.8 explains why we avoid.
 
-The name is kept because it describes the file's *role* accurately — it is where the set of available
+The name is kept because it describes the file's _role_ accurately — it is where the set of available
 implementations is enumerated — and no better single word exists. If you prefer, read it as
 "selector."
 
@@ -1066,7 +1113,7 @@ function toOurTrip(theirBooking) {
     city: theirBooking.dest_city_name,
     startDate: theirBooking.start.slice(0, 10),
     travellers: Number(theirBooking.pax_count),
-    status: theirBooking.state === 'CONF' ? 'confirmed' : 'pending',
+    status: theirBooking.state === "CONF" ? "confirmed" : "pending",
   };
 }
 ```
@@ -1081,6 +1128,6 @@ it is what you build when integrating with a large legacy context you cannot cha
 handful of pure functions inside a single adapter file, because the surface being translated is one
 HTTP response rather than an entire foreign domain model.
 
-The DDD framing is still useful for arguing about *where* translation belongs: the moment a vendor's
+The DDD framing is still useful for arguing about _where_ translation belongs: the moment a vendor's
 noun shows up in a service or a resolver, the anti-corruption boundary has been breached, regardless
 of how small it was.

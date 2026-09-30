@@ -52,7 +52,7 @@ export class FoundationStack extends cdk.Stack {
       vpc,
       internetFacing: true,
     });
-    graphAlb.addListener("Https", {
+    const graphListener = graphAlb.addListener("Https", {
       port: 443,
       certificates: [elbv2.ListenerCertificate.fromArn(config.certificateArn)],
       defaultAction: elbv2.ListenerAction.fixedResponse(404),
@@ -68,16 +68,17 @@ export class FoundationStack extends cdk.Stack {
       vpc,
       internetFacing: false,
     });
-    restAlb.addListener("RestHttp", {
+    const restListener = restAlb.addListener("RestHttp", {
       port: 3000,
       protocol: elbv2.ApplicationProtocol.HTTP,
       open: false,
       defaultAction: elbv2.ListenerAction.fixedResponse(404),
     });
-    restAlb.connections.allowFrom(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(3000),
-    );
+    const restTasks = new ec2.SecurityGroup(this, "RestTasks", { vpc });
+    const graphTasks = new ec2.SecurityGroup(this, "GraphTasks", { vpc });
+    restTasks.connections.allowFrom(restAlb, ec2.Port.tcp(3000));
+    graphTasks.connections.allowFrom(graphAlb, ec2.Port.tcp(4000));
+    restAlb.connections.allowFrom(graphTasks, ec2.Port.tcp(3000));
 
     const table = new dynamodb.Table(this, "Trips", {
       tableName: `wander-${config.environment}-trips`,
@@ -112,12 +113,14 @@ export class FoundationStack extends cdk.Stack {
       repositoryName: `wander-${config.environment}-rest`,
       encryption: ecr.RepositoryEncryption.AES_256,
       imageScanOnPush: true,
+      imageTagMutability: ecr.TagMutability.IMMUTABLE,
       lifecycleRules: [{ maxImageCount: 20 }],
     });
     const graphRepository = new ecr.Repository(this, "GraphImages", {
       repositoryName: `wander-${config.environment}-graph`,
       encryption: ecr.RepositoryEncryption.AES_256,
       imageScanOnPush: true,
+      imageTagMutability: ecr.TagMutability.IMMUTABLE,
       lifecycleRules: [{ maxImageCount: 20 }],
     });
     const uiBucket = new s3.Bucket(this, "UiBucket", {
@@ -190,6 +193,16 @@ export class FoundationStack extends cdk.Stack {
     }
 
     parameter("network/vpc-id", vpc.vpcId);
+    vpc.privateSubnets.forEach((subnet, index) =>
+      parameter(`network/private-subnet-${index + 1}-id`, subnet.subnetId),
+    );
+    parameter("network/rest-task-security-group-id", restTasks.securityGroupId);
+    parameter(
+      "network/graph-task-security-group-id",
+      graphTasks.securityGroupId,
+    );
+    parameter("compute/rest-listener-arn", restListener.listenerArn);
+    parameter("compute/graph-listener-arn", graphListener.listenerArn);
     parameter("compute/cluster-arn", cluster.clusterArn);
     parameter("compute/graph-alb-arn", graphAlb.loadBalancerArn);
     parameter("compute/graph-alb-dns", graphAlb.loadBalancerDnsName);

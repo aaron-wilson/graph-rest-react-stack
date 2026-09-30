@@ -121,6 +121,18 @@ describe("foundation deployment contract", () => {
       { Scheme: "internal" },
     );
     template.resourceCountIs("AWS::IAM::Role", 5);
+    template.hasResourceProperties("AWS::ECR::Repository", {
+      ImageTagMutability: "IMMUTABLE",
+    });
+    const ingress = Object.values(
+      template.findResources("AWS::EC2::SecurityGroupIngress"),
+    );
+    expect(
+      ingress
+        .filter((rule) => rule.Properties.ToPort === 3000)
+        .every((rule) => rule.Properties.SourceSecurityGroupId),
+    ).toBe(true);
+    expect(JSON.stringify(ingress)).not.toContain('"CidrIp"');
     const policyText = JSON.stringify(
       template.findResources("AWS::IAM::Policy"),
     );
@@ -132,7 +144,7 @@ describe("foundation deployment contract", () => {
   it("publishes versioned references and never embeds secret values", () => {
     const template = synth();
     const parameters = template.findResources("AWS::SSM::Parameter");
-    expect(Object.values(parameters)).toHaveLength(19);
+    expect(Object.values(parameters)).toHaveLength(25);
     expect(
       Object.values(parameters).every((item) =>
         item.Properties.Name.startsWith("/wander/demo/v1/"),

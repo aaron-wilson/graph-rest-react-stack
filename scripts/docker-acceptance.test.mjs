@@ -116,6 +116,7 @@ test("planning providers default to mocks and vendor keys reach only graph", () 
     assert.equal(graph[selector], `\${${selector}:-mock}`, selector);
   for (const model of ["OPENAI_MODEL", "ANTHROPIC_MODEL"])
     assert.equal(graph[model], `\${${model}:-}`, model);
+  assert.equal(graph.PROVIDER_TIMEOUT_MS, "${PROVIDER_TIMEOUT_MS:-5000}");
   // Keys are read only from WANDER_ names, never from a key the shell may already export.
   for (const key of [
     "TICKETMASTER_API_KEY",

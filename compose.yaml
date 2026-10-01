@@ -42,6 +42,8 @@ services:
       PROVIDER_LLM: ${PROVIDER_LLM:-mock}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      # Per-request vendor timeout; public endpoints such as Overpass can need more than 5 s.
+      PROVIDER_TIMEOUT_MS: ${PROVIDER_TIMEOUT_MS:-5000}
       # Keys reach this service only, under WANDER_ names, so a vendor key already exported
       # in the shell for other tools is never passed in by accident.
       TICKETMASTER_API_KEY: ${WANDER_TICKETMASTER_API_KEY:-}

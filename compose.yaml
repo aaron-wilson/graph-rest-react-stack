@@ -24,6 +24,9 @@ services:
         ]
       interval: 5s
       retries: 12
+      # Poll every second while starting so dependants are not held for a full interval.
+      start_period: 20s
+      start_interval: 1s
   graph:
     build: ../graph-api
     environment:
@@ -52,6 +55,9 @@ services:
         ]
       interval: 5s
       retries: 12
+      # Poll every second while starting so dependants are not held for a full interval.
+      start_period: 20s
+      start_interval: 1s
   ui:
     build:
       context: ../react-ui
@@ -75,6 +81,9 @@ services:
         ]
       interval: 5s
       retries: 12
+      # Poll every second while starting so dependants are not held for a full interval.
+      start_period: 20s
+      start_interval: 1s
   # The database image runs as dynamodblocal and has no /data directory, so Docker
   # creates the volume root-owned. Hand it to the image user before the database starts.
   dynamodb-volume-init:

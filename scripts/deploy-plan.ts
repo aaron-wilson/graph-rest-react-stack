@@ -3,9 +3,7 @@ import { mkdirSync } from "node:fs";
 import { archiveStatic } from "./archive-static.js";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { parseConfig as platformConfig } from "../platform-cdk/src/config.js";
-import { parseConfig as apiConfig } from "../../graph-api/infra/config.js";
-import { parseConfig as uiConfig } from "../../react-ui/infra/config.js";
+import { deploymentSummary, resolveDeployment } from "./deployment-config.js";
 
 const print = (line: string) => process.stdout.write(line + "\n");
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -20,15 +18,6 @@ const input: Record<string, string | undefined> = {
   ...process.env,
   PLATFORM_ENV: target,
 };
-const platform = platformConfig(input);
-uiConfig(input);
-const graphOrigin = input.DEPLOY_GRAPH_ORIGIN;
-if (
-  !graphOrigin ||
-  new URL(graphOrigin).protocol !== "https:" ||
-  new URL(graphOrigin).origin !== graphOrigin
-)
-  throw new Error("Invalid DEPLOY_GRAPH_ORIGIN");
 const repos = {
   rest: resolve(root, "../rest-api"),
   graph: resolve(root, "../graph-api"),
@@ -41,7 +30,8 @@ const revisions = {
   graph: git(repos.graph, ["rev-parse", "HEAD"]),
   ui: git(repos.ui, ["rev-parse", "HEAD"]),
 };
-const config = apiConfig({ ...input, API_IMAGE_TAG: revisions.graph });
+const deployment = resolveDeployment(input, revisions.graph);
+const { platform, graphOrigin } = deployment;
 for (const dir of Object.values(repos))
   if (git(dir, ["status", "--porcelain"]))
     throw new Error(
@@ -141,29 +131,26 @@ print(
 print(
   `# immutable revisions REST=${revisions.rest} graph=${revisions.graph} UI=${revisions.ui}`,
 );
+for (const line of deploymentSummary(deployment)) print(`# ${line}`);
 deploy(
   resolve(root, "platform-cdk"),
   `Wander${target}Foundation`,
   "tsconfig.json",
   "src/app.ts",
 );
-for (const vendor of [
-  config.API_LLM_PROVIDER === "mock" ? null : config.API_LLM_PROVIDER,
-  config.API_EVENTS_PROVIDER === "ticketmaster" ? "ticketmaster" : null,
-]) {
-  if (vendor)
-    run(root, "aws", [
-      "secretsmanager",
-      "describe-secret",
-      "--region",
-      platform.region,
-      "--secret-id",
-      `${prefix}/secrets/${vendor}`,
-      "--query",
-      "ARN",
-      "--output",
-      "text",
-    ]);
+for (const vendor of deployment.secrets) {
+  run(root, "aws", [
+    "secretsmanager",
+    "describe-secret",
+    "--region",
+    platform.region,
+    "--secret-id",
+    `${prefix}/secrets/${vendor}`,
+    "--query",
+    "ARN",
+    "--output",
+    "text",
+  ]);
 }
 const registry = `${platform.account}.dkr.ecr.${platform.region}.amazonaws.com`;
 print(
@@ -244,6 +231,7 @@ const pool = parameter("auth/user-pool-id");
 const domain = parameter("auth/hosted-domain");
 run(repos.ui, "node", ["scripts/build-static.mjs"], {
   UI_ASSET_REVISION: revisions.ui,
+  UI_SITE_ORIGIN: platform.siteOrigin,
   NEXT_PUBLIC_APP_MODE: "live",
   NEXT_PUBLIC_GRAPHQL_URL: `${graphOrigin}/graphql`,
   NEXT_PUBLIC_COGNITO_DOMAIN: `https://${domain}`,

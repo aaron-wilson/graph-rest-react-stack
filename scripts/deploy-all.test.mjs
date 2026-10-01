@@ -86,6 +86,61 @@ test("plans the shipped blank-model example without enabling a vendor", () => {
     assert.equal(invalid.stdout, "");
   }
 });
+test("prints a reviewable summary and passes the site origin to the UI build", () => {
+  const result = run(["demo"], {
+    API_LLM_PROVIDER: "anthropic",
+    API_LLM_MODEL: "example-model",
+    API_EVENTS_PROVIDER: "ticketmaster",
+    ANTHROPIC_API_KEY: "PRIVATE_DEPLOY_SENTINEL",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  for (const line of [
+    "# configuration summary (selections and names only, no secret values)",
+    "#   environment=demo account=111111111111 region=us-east-1",
+    "#   site=https://wander.example graph=https://api.wander.example",
+    "#   providers llm=anthropic model=example-model events=ticketmaster",
+    "#   secrets required=/wander/demo/v1/secrets/anthropic,/wander/demo/v1/secrets/ticketmaster",
+    "#   fixed in this release path: weather=mock places=mock telemetry=off sentry=off",
+  ])
+    assert.ok(result.stdout.includes(line), line);
+  assert.ok(
+    result.stdout.indexOf("# configuration summary") <
+      result.stdout.indexOf("WanderdemoFoundation"),
+    "summary precedes the first command",
+  );
+  assert.match(result.stdout, /UI_SITE_ORIGIN='https:\/\/wander\.example'/);
+  assert.match(run().stdout, /secrets required=none/);
+  assert.doesNotMatch(result.stdout + result.stderr, /PRIVATE_DEPLOY_SENTINEL/);
+});
+test("rejects conflicting or malformed origins without echoing values", () => {
+  for (const [extra, key] of [
+    [{ DEPLOY_GRAPH_ORIGIN: "https://wander.example" }, "Conflicting origins"],
+    [
+      { DEPLOY_GRAPH_ORIGIN: "https://api.wander.example/graphql" },
+      "DEPLOY_GRAPH_ORIGIN",
+    ],
+    [
+      { DEPLOY_GRAPH_ORIGIN: "not a url PRIVATE_DEPLOY_SENTINEL" },
+      "DEPLOY_GRAPH_ORIGIN",
+    ],
+    [
+      {
+        PLATFORM_SITE_ORIGIN:
+          "https://user:PRIVATE_DEPLOY_SENTINEL@wander.example",
+      },
+      "PLATFORM_SITE_ORIGIN",
+    ],
+  ]) {
+    const result = run(["demo"], extra);
+    assert.notEqual(result.status, 0);
+    assert.ok(result.stderr.includes(key), key);
+    assert.equal(result.stdout, "");
+    assert.doesNotMatch(
+      result.stderr,
+      /PRIVATE_DEPLOY_SENTINEL|api\.wander\.example/,
+    );
+  }
+});
 test("validates required inputs and flags before any deployment", () => {
   for (const result of [
     run(["demo", "--yes"]),

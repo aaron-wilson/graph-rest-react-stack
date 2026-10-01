@@ -64,7 +64,7 @@ const saved = await graph(
 if (saved.trip?.id !== tripId) throw new Error("Saved trip missing");
 // The exact saved-trips query the UI sends, so query limits cannot reject it unnoticed.
 const listed = await graph(
-  `query ListTrips($first: Int!) { trips(first: $first) { items { id city version updatedAt } nextCursor } }`,
+  `query ListTrips($first: Int!) { trips(first: $first) { items { id city version updatedAt days { id date } } nextCursor } }`,
   { first: 20 },
 );
 if (!Array.isArray(listed.trips?.items) || listed.trips.items.length === 0)

@@ -62,6 +62,13 @@ const saved = await graph(
   { id: tripId },
 );
 if (saved.trip?.id !== tripId) throw new Error("Saved trip missing");
+// The exact saved-trips query the UI sends, so query limits cannot reject it unnoticed.
+const listed = await graph(
+  `query ListTrips($first: Int!) { trips(first: $first) { items { id city version updatedAt } nextCursor } }`,
+  { first: 20 },
+);
+if (!Array.isArray(listed.trips?.items) || listed.trips.items.length === 0)
+  throw new Error("Saved trips list is empty");
 const shared = await graph(
   `mutation($input: ShareTripInput!) { shareTrip(input: $input) { share { token } } }`,
   {
@@ -79,4 +86,4 @@ const publicTrip = await graph(
 );
 if (publicTrip.sharedTrip?.id !== tripId)
   throw new Error("Shared trip missing");
-process.stdout.write("Create, SSE, save, and public share passed\n");
+process.stdout.write("Create, SSE, save, list, and public share passed\n");

@@ -75,6 +75,15 @@ services:
         ]
       interval: 5s
       retries: 12
+  # The database image runs as dynamodblocal and has no /data directory, so Docker
+  # creates the volume root-owned. Hand it to the image user before the database starts.
+  dynamodb-volume-init:
+    image: amazon/dynamodb-local:2.6.1
+    profiles: ["dynamo"]
+    user: "0:0"
+    entrypoint: ["chown", "-R", "dynamodblocal:dynamodblocal", "/data"]
+    volumes:
+      - dynamodb-data:/data
   dynamodb:
     image: amazon/dynamodb-local:2.6.1
     profiles: ["dynamo"]
@@ -83,6 +92,9 @@ services:
       - dynamodb-data:/data
     ports:
       - "127.0.0.1:8000:8000"
+    depends_on:
+      dynamodb-volume-init:
+        condition: service_completed_successfully
   dynamodb-init:
     build:
       context: ../rest-api

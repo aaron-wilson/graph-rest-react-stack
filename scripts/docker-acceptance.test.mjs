@@ -82,6 +82,28 @@ test("acceptance seeds with the build-stage service and verifies records after r
   }
 });
 
+test("the database volume is handed to the image user before the database starts", () => {
+  const compose = YAML.parse(readFileSync("compose.yaml", "utf8"));
+  const database = compose.services.dynamodb;
+  const init = compose.services["dynamodb-volume-init"];
+  // The image runs as dynamodblocal and has no /data, so a fresh volume is root-owned.
+  assert.equal(
+    database.depends_on["dynamodb-volume-init"].condition,
+    "service_completed_successfully",
+  );
+  assert.equal(init.image, database.image);
+  assert.deepEqual(init.volumes, database.volumes);
+  assert.deepEqual(init.profiles, database.profiles);
+  assert.equal(init.user, "0:0");
+  assert.deepEqual(init.entrypoint, [
+    "chown",
+    "-R",
+    "dynamodblocal:dynamodblocal",
+    "/data",
+  ]);
+  assert.equal(database.command.at(-1), init.entrypoint.at(-1));
+});
+
 test("persistence reads retry startup failures and compare actual records", async () => {
   const records = [{ id: "a", city: "Lisbon", version: 1 }];
   let attempts = 0;

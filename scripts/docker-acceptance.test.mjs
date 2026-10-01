@@ -104,6 +104,53 @@ test("the database volume is handed to the image user before the database starts
   assert.equal(database.command.at(-1), init.entrypoint.at(-1));
 });
 
+test("planning providers default to mocks and vendor keys reach only graph", () => {
+  const compose = YAML.parse(readFileSync("compose.yaml", "utf8"));
+  const graph = compose.services.graph.environment;
+  for (const selector of [
+    "PROVIDER_WEATHER",
+    "PROVIDER_PLACES",
+    "PROVIDER_EVENTS",
+    "PROVIDER_LLM",
+  ])
+    assert.equal(graph[selector], `\${${selector}:-mock}`, selector);
+  for (const model of ["OPENAI_MODEL", "ANTHROPIC_MODEL"])
+    assert.equal(graph[model], `\${${model}:-}`, model);
+  // Keys are read only from WANDER_ names, never from a key the shell may already export.
+  for (const key of [
+    "TICKETMASTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+  ])
+    assert.equal(graph[key], `\${WANDER_${key}:-}`, key);
+  for (const [name, service] of Object.entries(compose.services)) {
+    if (name === "graph") continue;
+    const visible = JSON.stringify({
+      environment: service.environment ?? {},
+      build: service.build ?? {},
+    });
+    assert.doesNotMatch(
+      visible,
+      /TICKETMASTER|OPENAI|ANTHROPIC|PROVIDER_(WEATHER|PLACES|EVENTS|LLM)/,
+      `${name} must not receive planning provider settings`,
+    );
+  }
+  const acceptance = readFileSync("scripts/docker-acceptance.sh", "utf8");
+  assert.match(
+    acceptance,
+    /export PROVIDER_WEATHER=mock PROVIDER_PLACES=mock PROVIDER_EVENTS=mock PROVIDER_LLM=mock/,
+  );
+  for (const key of [
+    "WANDER_TICKETMASTER_API_KEY",
+    "WANDER_OPENAI_API_KEY",
+    "WANDER_ANTHROPIC_API_KEY",
+  ])
+    assert.ok(
+      acceptance.includes(`${key}= `) || acceptance.includes(`${key}=\n`),
+      key,
+    );
+});
+
 test("persistence reads retry startup failures and compare actual records", async () => {
   const records = [{ id: "a", city: "Lisbon", version: 1 }];
   let attempts = 0;

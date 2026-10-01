@@ -34,10 +34,19 @@ services:
       APP_MODE: demo
       REST_URL: http://rest:3000
       CORS_ORIGIN: http://localhost:3001
-      PROVIDER_WEATHER: mock
-      PROVIDER_PLACES: mock
-      PROVIDER_EVENTS: mock
-      PROVIDER_LLM: mock
+      # Each selection defaults to the offline mock; graph validates a selection at startup
+      # and exits when its key or model is missing.
+      PROVIDER_WEATHER: ${PROVIDER_WEATHER:-mock}
+      PROVIDER_PLACES: ${PROVIDER_PLACES:-mock}
+      PROVIDER_EVENTS: ${PROVIDER_EVENTS:-mock}
+      PROVIDER_LLM: ${PROVIDER_LLM:-mock}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      # Keys reach this service only, under WANDER_ names, so a vendor key already exported
+      # in the shell for other tools is never passed in by accident.
+      TICKETMASTER_API_KEY: ${WANDER_TICKETMASTER_API_KEY:-}
+      OPENAI_API_KEY: ${WANDER_OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${WANDER_ANTHROPIC_API_KEY:-}
       TELEMETRY_MODE: ${TELEMETRY_MODE:-off}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:

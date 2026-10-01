@@ -85,7 +85,7 @@ docker compose --env-file /dev/null --profile dynamo --profile telemetry down
 
 Open http://localhost:3001/ and inspect graph → REST traces in Jaeger at http://localhost:16686/. No vendor account is required. Both modes use ports 3000/4000/3001, so run one at a time. Ordinary shutdown preserves the database; `down -v` deletes it. Use a clean shell: `--env-file /dev/null` skips the env file but not inherited settings.
 
-For a lightweight in-memory stack, omit the profile/initialization commands and run `docker compose --env-file /dev/null up --build -d --wait rest graph ui` with store/telemetry overrides unset. Its defaults are memory storage, mock providers, demo identity and telemetry off.
+For a lightweight in-memory stack, omit the profile/initialization commands and run `docker compose --env-file /dev/null up --build -d --wait rest graph ui` with store/telemetry overrides unset. Its defaults are memory storage, mock providers, demo identity and telemetry off. Planning providers default to offline mocks in every mode; [.env.example](.env.example) lists the `PROVIDER_*` selections, model names and `WANDER_*_API_KEY` values that switch a Compose run to real weather, places, events or LLM vendors.
 
 ---
 

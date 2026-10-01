@@ -4,6 +4,9 @@ deployment_root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$deployment_root"
 command -v docker >/dev/null || { echo "Docker is required for Compose acceptance" >&2; exit 2; }
 export PROVIDER_STORE=memory DYNAMO_TABLE= DYNAMO_ENDPOINT= TELEMETRY_MODE=off NEXT_PUBLIC_SENTRY_DSN=
+# Acceptance is account-free: force every planning provider to its mock and pass no vendor key.
+export PROVIDER_WEATHER=mock PROVIDER_PLACES=mock PROVIDER_EVENTS=mock PROVIDER_LLM=mock
+export OPENAI_MODEL= ANTHROPIC_MODEL= WANDER_TICKETMASTER_API_KEY= WANDER_OPENAI_API_KEY= WANDER_ANTHROPIC_API_KEY=
 # Never delete the operator's persistent wander database volume, even on failure.
 # Use the fixed project/file explicitly so inherited Compose settings cannot redirect cleanup.
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES

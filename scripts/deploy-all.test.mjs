@@ -91,6 +91,8 @@ test("prints a reviewable summary and passes the site origin to the UI build", (
     API_LLM_PROVIDER: "anthropic",
     API_LLM_MODEL: "example-model",
     API_EVENTS_PROVIDER: "ticketmaster",
+    API_WEATHER_PROVIDER: "wttr",
+    API_PLACES_PROVIDER: "overpass",
     ANTHROPIC_API_KEY: "PRIVATE_DEPLOY_SENTINEL",
   });
   assert.equal(result.status, 0, result.stderr);
@@ -98,9 +100,9 @@ test("prints a reviewable summary and passes the site origin to the UI build", (
     "# configuration summary (selections and names only, no secret values)",
     "#   environment=demo account=111111111111 region=us-east-1",
     "#   site=https://wander.example graph=https://api.wander.example",
-    "#   providers llm=anthropic model=example-model events=ticketmaster",
+    "#   providers weather=wttr places=overpass events=ticketmaster llm=anthropic model=example-model",
     "#   secrets required=/wander/demo/v1/secrets/anthropic,/wander/demo/v1/secrets/ticketmaster",
-    "#   fixed in this release path: weather=mock places=mock telemetry=off sentry=off",
+    "#   fixed in this release path: telemetry=off sentry=off",
   ])
     assert.ok(result.stdout.includes(line), line);
   assert.ok(
@@ -109,7 +111,33 @@ test("prints a reviewable summary and passes the site origin to the UI build", (
     "summary precedes the first command",
   );
   assert.match(result.stdout, /UI_SITE_ORIGIN='https:\/\/wander\.example'/);
-  assert.match(run().stdout, /secrets required=none/);
+  const defaults = run().stdout;
+  assert.match(defaults, /secrets required=none/);
+  assert.match(
+    defaults,
+    /providers weather=mock places=mock events=mock llm=mock model=none/,
+  );
+  // Weather and places need no secret, so selecting them alone checks none.
+  const open = run(["demo"], {
+    API_WEATHER_PROVIDER: "wttr",
+    API_PLACES_PROVIDER: "overpass",
+  });
+  assert.equal(open.status, 0, open.stderr);
+  assert.match(open.stdout, /secrets required=none/);
+  assert.doesNotMatch(open.stdout, /describe-secret/);
+  for (const [extra, key] of [
+    [
+      { API_WEATHER_PROVIDER: "PRIVATE_DEPLOY_SENTINEL" },
+      "API_WEATHER_PROVIDER",
+    ],
+    [{ API_PLACES_PROVIDER: "wttr" }, "API_PLACES_PROVIDER"],
+  ]) {
+    const invalid = run(["demo"], extra);
+    assert.notEqual(invalid.status, 0);
+    assert.ok(invalid.stderr.includes(key), key);
+    assert.equal(invalid.stdout, "");
+    assert.doesNotMatch(invalid.stderr, /PRIVATE_DEPLOY_SENTINEL/);
+  }
   assert.doesNotMatch(result.stdout + result.stderr, /PRIVATE_DEPLOY_SENTINEL/);
 });
 test("rejects conflicting or malformed origins without echoing values", () => {

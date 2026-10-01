@@ -58,9 +58,9 @@ export function deploymentSummary({
     `  environment=${platform.environment} account=${platform.account} region=${platform.region}`,
     `  site=${platform.siteOrigin} graph=${graphOrigin}`,
     "  auth=live (Cognito) store=dynamo",
-    `  providers llm=${api.API_LLM_PROVIDER} model=${api.API_LLM_MODEL ?? "none"} events=${api.API_EVENTS_PROVIDER}`,
+    `  providers weather=${api.API_WEATHER_PROVIDER} places=${api.API_PLACES_PROVIDER} events=${api.API_EVENTS_PROVIDER} llm=${api.API_LLM_PROVIDER} model=${api.API_LLM_MODEL ?? "none"}`,
     `  secrets required=${secrets.length ? secrets.map((vendor) => `${prefix}/${vendor}`).join(",") : "none"}`,
-    "  fixed in this release path: weather=mock places=mock telemetry=off sentry=off",
+    "  fixed in this release path: telemetry=off sentry=off",
     "  browser settings are compiled into the UI export: a change needs a rebuild and republish",
     "  API settings are task environment: a change needs a redeploy of that service",
   ];

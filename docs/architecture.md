@@ -1,6 +1,6 @@
 # Architecture
 
-Wander demonstrates a typed browser → orchestration → domain boundary.
+Wander separates the browser, orchestration and domain layers through typed interfaces.
 
 ```mermaid
 flowchart LR
@@ -27,4 +27,4 @@ single OAC policy. OpenTelemetry and Sentry are opt-in. Vitest, API integration,
 CDK assertions cover boundaries locally; Docker and account-backed acceptance are separate.
 
 Next builds the static application, Vite transforms tests, Sharp generates images, and MDX
-compiles small committed examples. There is no request-time Next server or direct UI → REST path.
+compiles the planning guides. There is no request-time Next server or direct UI → REST path.

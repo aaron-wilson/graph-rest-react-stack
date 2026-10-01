@@ -67,7 +67,7 @@ Shared infrastructure uses AWS CDK 2.271.0 (library), IAM, SSM and Secrets Manag
 Clone all four repositories as siblings. Choose one local mode:
 
 - **Source development:** install dependencies and follow each application's README; REST uses `bun run dev`, graph/UI use `pnpm dev`.
-- **Container showcase:** from this hub, with Docker and Node 24 available, combine persistent DynamoDB Local with collector/Jaeger telemetry:
+- **Container stack:** from this hub, with Docker and Node 24 available, combine persistent DynamoDB Local with collector/Jaeger telemetry:
 
 ```sh
 (
@@ -85,7 +85,7 @@ docker compose --env-file /dev/null --profile dynamo --profile telemetry down
 
 Open http://localhost:3001/ and inspect graph → REST traces in Jaeger at http://localhost:16686/. No vendor account is required. Both modes use ports 3000/4000/3001, so run one at a time. Ordinary shutdown preserves the database; `down -v` deletes it. Use a clean shell: `--env-file /dev/null` skips the env file but not inherited settings.
 
-For a lightweight memory demo, omit the profile/initialization commands and run `docker compose --env-file /dev/null up --build -d --wait rest graph ui` with store/telemetry overrides unset. Its defaults are memory storage, mock providers, demo identity and telemetry off.
+For a lightweight in-memory stack, omit the profile/initialization commands and run `docker compose --env-file /dev/null up --build -d --wait rest graph ui` with store/telemetry overrides unset. Its defaults are memory storage, mock providers, demo identity and telemetry off.
 
 ---
 
@@ -102,6 +102,6 @@ node scripts/verify-repo.mjs react-ui --acceptance --e2e
 
 Without `--acceptance`, the verifier runs static checks only. Operator acceptance adds suites, builds, static-route servers and offline synthesis; `--e2e` also starts all three apps for browser tests. Stop the manual stack first. Prior local API/browser and offline infrastructure evidence exists; successful container and live-account acceptance remain pending.
 
-`scripts/docker-acceptance.sh` tests memory and DynamoDB with the isolated `wander-acceptance` project and deletes only that project's disposable volumes. Stop the normal demo to release the shared ports; its `wander` database is preserved. Collector delivery is checked separately through Jaeger and collector output.
+`scripts/docker-acceptance.sh` tests memory and DynamoDB with the isolated `wander-acceptance` project and deletes only that project's disposable volumes. Stop the local stack to release the shared ports; its `wander` database is preserved. Collector delivery is checked separately through Jaeger and collector output.
 
 `scripts/deploy-all.sh <environment> --dry-run` plans foundation → REST → graph → static UI from the inputs in [deployment.env.example](scripts/deployment.env.example); `--execute` deploys. The service stacks share `platform-cdk/node_modules`. Hosted APIs require Cognito and hosted REST uses DynamoDB. Workflow templates remain inactive until deliberately enabled.

@@ -18,7 +18,7 @@ export class FoundationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, config: PlatformConfig) {
     super(scope, id, {
       env: { account: config.account, region: config.region },
-      description: "Wander demo shared foundation",
+      description: "Wander shared foundation",
     });
     const path = `/wander/${config.environment}/v1`;
     const parameter = (name: string, value: string) =>
